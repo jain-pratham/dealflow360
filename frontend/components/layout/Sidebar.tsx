@@ -34,6 +34,7 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const { user, role, isLoading, logout } = useAuth();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     "Discount & Approval": true,
+    "Quotations": true,
   });
 
   const toggleSubmenu = (title: string) => {
@@ -102,13 +103,14 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           const isSubOpen = openSubmenus[item.title];
 
           if (hasChildren) {
+            const hasChildActive = item.children?.some((sub) => pathname === sub.href);
             return (
               <div key={item.title} className="space-y-1">
                 <button
                   onClick={() => toggleSubmenu(item.title)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
-                    isSubOpen
-                      ? "text-white bg-white/10"
+                    hasChildActive || isSubOpen
+                      ? "text-white bg-white/10 font-semibold"
                       : "text-white/75 hover:bg-white/10 hover:text-white"
                   } ${collapsed ? "justify-center" : ""}`}
                 >

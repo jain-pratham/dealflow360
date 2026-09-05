@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
+import { MailModule } from '../mail/mail.module';
 import { AuthController } from './auth.controller';
 import { AdminTestController } from './admin-test.controller';
 import { AuthService } from './auth.service';
@@ -16,6 +17,7 @@ import { AdminBootstrapService } from './admin-bootstrap.service';
   imports: [
     ConfigModule,
     PrismaModule,
+    MailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({}),
   ],
@@ -33,6 +35,7 @@ import { AdminBootstrapService } from './admin-bootstrap.service';
     JwtStrategy,
     RolesGuard,
     JwtAuthGuard,
+    PassportModule,
   ],
 })
 export class AuthModule {}

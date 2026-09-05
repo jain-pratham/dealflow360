@@ -107,8 +107,21 @@ class ApiClient {
     }
   }
 
-  get<T = any>(endpoint: string) {
-    return this.request<T>(endpoint, { method: 'GET' });
+  get<T = any>(endpoint: string, params?: Record<string, any>) {
+    let url = endpoint;
+    if (params) {
+      const query = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') {
+          query.append(k, String(v));
+        }
+      });
+      const queryString = query.toString();
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString;
+      }
+    }
+    return this.request<T>(url, { method: 'GET' });
   }
 
   post<T = any>(endpoint: string, body?: any) {
@@ -121,6 +134,13 @@ class ApiClient {
   put<T = any>(endpoint: string, body?: any) {
     return this.request<T>(endpoint, {
       method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  patch<T = any>(endpoint: string, body?: any) {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
       body: body ? JSON.stringify(body) : undefined,
     });
   }

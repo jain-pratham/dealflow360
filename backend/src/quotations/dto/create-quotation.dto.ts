@@ -1,0 +1,50 @@
+import {
+  IsArray,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class CreateQuotationLineDto {
+  @IsNotEmpty({ message: 'Product ID is required' })
+  @IsString()
+  productId: string;
+
+  @IsNotEmpty({ message: 'Quantity is required' })
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Quantity must be a valid number' })
+  @Min(1, { message: 'Quantity must be at least 1' })
+  quantity: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Discount percentage must be a valid number' })
+  @Min(0, { message: 'Discount cannot be negative' })
+  @Max(100, { message: 'Discount cannot exceed 100%' })
+  discountPercent?: number = 0;
+}
+
+export class CreateQuotationDto {
+  @IsNotEmpty({ message: 'Customer ID is required' })
+  @IsString()
+  customerId: string;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateQuotationLineDto)
+  lines?: CreateQuotationLineDto[];
+}

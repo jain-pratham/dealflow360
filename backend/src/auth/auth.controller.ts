@@ -15,6 +15,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { ActivateCustomerDto } from './dto/activate-customer.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GetUser } from './decorators/get-user.decorator';
 
@@ -32,6 +33,22 @@ export class AuthController {
   @Get('verify-email')
   async verifyEmail(@Query('token') token: string) {
     return this.authService.verifyEmail(token);
+  }
+
+  @Get('customer/verify-token')
+  async verifyCustomerToken(@Query('token') token: string) {
+    return this.authService.validateCustomerToken(token);
+  }
+
+  @Post('customer/activate')
+  @HttpCode(HttpStatus.OK)
+  async activateCustomer(
+    @Body() activateDto: ActivateCustomerDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.activateCustomerAccount(activateDto);
+    this.setRefreshTokenCookie(res, result.refreshToken);
+    return result;
   }
 
   @Post('login')

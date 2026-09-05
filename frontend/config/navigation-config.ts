@@ -105,19 +105,22 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           icon: React.createElement(LayoutDashboard, { size: 18 }),
         },
         {
+          title: "Customers",
+          href: "/sales/customers",
+          icon: React.createElement(Building2, { size: 18 }),
+        },
+        {
           title: "Quotations",
-          href: "/sales/quotations",
           icon: React.createElement(FileSpreadsheet, { size: 18 }),
+          children: [
+            { title: "All Quotations", href: "/sales/quotations" },
+            { title: "New Quotation", href: "/sales/quotations/new" },
+          ],
         },
         {
           title: "Pipeline",
           href: "/sales/pipeline",
           icon: React.createElement(GitPullRequest, { size: 18 }),
-        },
-        {
-          title: "New Quotation",
-          href: "/sales/quotations/new",
-          icon: React.createElement(PlusCircle, { size: 18 }),
         },
         {
           title: "Approvals",
@@ -149,9 +152,17 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           icon: React.createElement(LayoutDashboard, { size: 18 }),
         },
         {
+          title: "Customers",
+          href: "/sales/customers",
+          icon: React.createElement(Building2, { size: 18 }),
+        },
+        {
           title: "Quotations",
-          href: "/manager/quotations",
           icon: React.createElement(FileSpreadsheet, { size: 18 }),
+          children: [
+            { title: "All Quotations", href: "/manager/quotations" },
+            { title: "New Quotation", href: "/sales/quotations/new" },
+          ],
         },
         {
           title: "Approval Queue",

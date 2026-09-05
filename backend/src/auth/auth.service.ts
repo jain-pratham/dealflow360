@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -8,10 +9,12 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ActivateCustomerDto } from './dto/activate-customer.dto';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +22,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   private async generateTokens(userId: string, email: string, role: string) {
@@ -95,6 +99,13 @@ export class AuthService {
       newUser.role,
     );
     await this.updateRefreshTokenHash(newUser.id, tokens.refreshToken);
+
+    // Send verification email via SMTP
+    await this.mailService.sendVerificationEmail(
+      newUser.email,
+      newUser.name,
+      verificationToken,
+    );
 
     return {
       message:
@@ -265,6 +276,107 @@ export class AuthService {
       isActive: user.isActive,
       isVerified: user.isVerified,
       createdAt: user.createdAt,
+      customerId: user.customerId,
+    };
+  }
+
+  async validateCustomerToken(token: string) {
+    if (!token) {
+      throw new BadRequestException('Token is required');
+    }
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const customer = await this.prisma.customer.findFirst({
+      where: { invitationTokenHash: tokenHash },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Invalid or expired activation token');
+    }
+
+    if (customer.invitationExpiresAt && customer.invitationExpiresAt < new Date()) {
+      throw new BadRequestException('Activation token has expired');
+    }
+
+    return {
+      valid: true,
+      email: customer.contactEmail,
+      customerName: customer.companyName || customer.name,
+    };
+  }
+
+  async activateCustomerAccount(activateDto: ActivateCustomerDto) {
+    const { token, password } = activateDto;
+    if (!token) {
+      throw new BadRequestException('Token is required');
+    }
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const customer = await this.prisma.customer.findFirst({
+      where: { invitationTokenHash: tokenHash },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Invalid or already used activation token');
+    }
+
+    if (customer.invitationExpiresAt && customer.invitationExpiresAt < new Date()) {
+      throw new BadRequestException('Activation token has expired');
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const email = customer.contactEmail.toLowerCase();
+
+    let user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (user) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash,
+          role: UserRole.CUSTOMER,
+          isActive: true,
+          isVerified: true,
+          customerId: customer.id,
+        },
+      });
+    } else {
+      user = await this.prisma.user.create({
+        data: {
+          name: customer.name || customer.companyName,
+          email,
+          passwordHash,
+          role: UserRole.CUSTOMER,
+          isActive: true,
+          isVerified: true,
+          customerId: customer.id,
+        },
+      });
+    }
+
+    await this.prisma.customer.update({
+      where: { id: customer.id },
+      data: {
+        invitationTokenHash: null,
+        invitationExpiresAt: null,
+        isInvited: true,
+      },
+    });
+
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
+
+    return {
+      message: 'Account activated successfully',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        customerId: user.customerId,
+      },
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     };
   }
 }

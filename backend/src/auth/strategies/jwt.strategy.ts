@@ -36,7 +36,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       ]),
       ignoreExpiration: false,
       secretOrKey:
-        configService.get<string>('JWT_ACCESS_SECRET') ||
+        configService?.get<string>('JWT_ACCESS_SECRET') ||
+        process.env.JWT_ACCESS_SECRET ||
         'dealflow_access_secret_key_2026',
     });
   }
