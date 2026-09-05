@@ -132,8 +132,8 @@ export class ApprovalsService {
       );
     }
 
-    // Safety: Sales Rep cannot approve their own request
-    if (ar.quotation.salesRepId === currentUser.id && currentUser.role !== UserRole.ADMIN) {
+    // Safety: A pure Sales Rep cannot approve their own request
+    if (ar.quotation.salesRepId === currentUser.id && currentUser.role === UserRole.SALES_REP) {
       throw new ForbiddenException('Sales Rep cannot approve their own quotation approval request');
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { getMenuItemsForRole, NavItem } from "@/config/navigation-config";
+import { getRoleDisplayName } from "@/lib/role-utils";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -32,16 +33,24 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, role, isLoading, logout } = useAuth();
-  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
-    "Discount & Approval": true,
-    "Quotations": true,
-  });
-
-  const toggleSubmenu = (title: string) => {
-    setOpenSubmenus((prev) => ({ ...prev, [title]: !prev[title] }));
-  };
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
   const navItems: NavItem[] = getMenuItemsForRole(role);
+
+  // Accordion behavior: auto-open the submenu containing the active route
+  useEffect(() => {
+    const activeParent = navItems.find((item) =>
+      item.children?.some((child) => child.href === pathname)
+    );
+    if (activeParent) {
+      setOpenSubmenus({ [activeParent.title]: true });
+    }
+  }, [pathname, role]);
+
+  // Single-expansion accordion toggle
+  const toggleSubmenu = (title: string) => {
+    setOpenSubmenus((prev) => (prev[title] ? {} : { [title]: true }));
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -116,44 +125,52 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
               <div key={item.title} className="space-y-1">
                 <button
                   onClick={() => toggleSubmenu(item.title)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ease-in-out cursor-pointer ${
                     hasChildActive || isSubOpen
                       ? "text-white bg-white/10 font-semibold"
                       : "text-white/75 hover:bg-white/10 hover:text-white"
                   } ${collapsed ? "justify-center" : ""}`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-[#F4882E]">{item.icon}</span>
+                    <span className="text-[#F4882E] transition-transform duration-200">{item.icon}</span>
                     {!collapsed && <span>{item.title}</span>}
                   </div>
                   {!collapsed && (
                     <ChevronDown
                       size={14}
-                      className={`transition-transform duration-200 ${
+                      className={`transition-transform duration-500 ease-in-out ${
                         isSubOpen ? "rotate-180 text-white" : "text-white/50"
                       }`}
                     />
                   )}
                 </button>
 
-                {!collapsed && isSubOpen && (
-                  <div className="ml-4 pl-3 border-l border-white/10 space-y-1 my-1 bg-black/20 rounded-lg p-1.5">
-                    {item.children?.map((sub) => {
-                      const isSubActive = pathname === sub.href;
-                      return (
-                        <Link
-                          key={sub.title}
-                          href={sub.href}
-                          className={`block px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                            isSubActive
-                              ? "bg-[#0D69B2] text-white font-semibold shadow-sm"
-                              : "text-white/70 hover:bg-white/10 hover:text-white"
-                          }`}
-                        >
-                          {sub.title}
-                        </Link>
-                      );
-                    })}
+                {!collapsed && (
+                  <div
+                    className={`overflow-hidden transition-all duration-500 ease-in-out origin-top ${
+                      isSubOpen
+                        ? "max-h-40 opacity-100 mt-1 mb-1 scale-y-100"
+                        : "max-h-0 opacity-0 mt-0 mb-0 pointer-events-none scale-y-95"
+                    }`}
+                  >
+                    <div className="ml-4 pl-3 border-l border-white/10 space-y-1 bg-black/20 rounded-lg p-1.5">
+                      {item.children?.map((sub) => {
+                        const isSubActive = pathname === sub.href;
+                        return (
+                          <Link
+                            key={sub.title}
+                            href={sub.href}
+                            className={`block px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 ${
+                              isSubActive
+                                ? "bg-[#0D69B2] text-white font-semibold shadow-sm"
+                                : "text-white/70 hover:bg-white/10 hover:text-white"
+                            }`}
+                          >
+                            {sub.title}
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
@@ -197,10 +214,10 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
               </div>
               <div className="flex flex-col truncate">
                 <span className="text-xs font-bold text-white truncate">
-                  {user?.email?.split("@")[0] || "User Account"}
+                  {getRoleDisplayName(user?.role)}
                 </span>
                 <span className="text-[10px] text-slate-400 truncate">
-                  {user?.role || "SYSTEM_USER"}
+                  {user?.email || "admin@dealflow360.com"}
                 </span>
               </div>
             </div>

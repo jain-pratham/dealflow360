@@ -25,6 +25,7 @@ import {
   UserCheck,
   FolderKanban,
   MessageSquare,
+  Layers,
 } from "lucide-react";
 import { UserRole } from "@/context/auth-context";
 
@@ -81,6 +82,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           icon: React.createElement(Warehouse, { size: 18 }),
         },
         {
+          title: "Inventory",
+          href: "/admin/inventory",
+          icon: React.createElement(Layers, { size: 18 }),
+        },
+        {
           title: "Subscription Plans",
           href: "/admin/subscription-plans",
           icon: React.createElement(Repeat, { size: 18 }),
@@ -131,6 +137,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           title: "Fulfillment",
           href: "/sales/fulfillment",
           icon: React.createElement(Truck, { size: 18 }),
+        },
+        {
+          title: "Inventory",
+          href: "/sales/inventory",
+          icon: React.createElement(Layers, { size: 18 }),
         },
         {
           title: "Billing",
@@ -190,6 +201,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           href: "/manager/reports",
           icon: React.createElement(FileText, { size: 18 }),
         },
+        {
+          title: "Inventory",
+          href: "/sales/inventory",
+          icon: React.createElement(Layers, { size: 18 }),
+        },
       ];
 
     case "FINANCE":
@@ -209,6 +225,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           title: "Fulfillment",
           href: "/finance/fulfillment",
           icon: React.createElement(Truck, { size: 18 }),
+        },
+        {
+          title: "Inventory",
+          href: "/finance/inventory",
+          icon: React.createElement(Layers, { size: 18 }),
         },
         {
           title: "Backorders",

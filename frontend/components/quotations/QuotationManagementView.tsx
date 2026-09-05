@@ -61,12 +61,47 @@ export type QuotationStatus =
 
 export interface Customer {
   id: string;
-  name: string;
-  companyName: string;
-  email: string;
-  tier: "BRONZE" | "SILVER" | "GOLD";
+  name?: string;
+  contactName?: string;
+  companyName?: string;
+  email?: string;
+  contactEmail?: string;
+  tier?: "BRONZE" | "SILVER" | "GOLD";
+  customerTier?: "BRONZE" | "SILVER" | "GOLD";
   currency?: string;
   isActive: boolean;
+}
+
+export function formatCustomerOptionLabel(c: Customer): string {
+  const company = c.companyName?.trim();
+  const person = (c.contactName || c.name)?.trim();
+  const email = (c.email || c.contactEmail)?.trim();
+  const tier = (c.tier || c.customerTier || "BRONZE").toUpperCase();
+
+  let namePart = company || person || "Customer Account";
+  if (company && person && company.toLowerCase() !== person.toLowerCase()) {
+    namePart = `${company} (${person})`;
+  }
+
+  const details = [email, `${tier} Tier`].filter(Boolean).join(" • ");
+  return details ? `${namePart} — ${details}` : namePart;
+}
+
+export function getCustomerNameLabel(c: Customer): string {
+  const company = c.companyName?.trim();
+  const person = (c.contactName || c.name)?.trim();
+  if (company && person && company.toLowerCase() !== person.toLowerCase()) {
+    return `${company} (${person})`;
+  }
+  return company || person || "Customer Account";
+}
+
+export function getCustomerEmailLabel(c: Customer): string {
+  return (c.email || c.contactEmail || "").trim();
+}
+
+export function getCustomerTierLabel(c: Customer): string {
+  return (c.tier || c.customerTier || "BRONZE").toUpperCase();
 }
 
 export interface Product {
@@ -237,8 +272,9 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
         const prod = products.find((p) => p.id === selectedProductId);
         if (prod) {
           setSelectedProduct(prod);
+          const tier = getCustomerTierLabel(selectedCustomer);
           const res = await apiClient.get<{ price: number }>(
-            `/price-lists/resolve-price?productId=${prod.id}&customerTier=${selectedCustomer.tier}&currency=${currency}`
+            `/price-lists/resolve-price?productId=${prod.id}&customerTier=${tier}&currency=${currency}`
           );
           if (res.data && typeof res.data.price === "number") {
             setResolvedUnitPrice(res.data.price);
@@ -258,13 +294,14 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
   useEffect(() => {
     const evalDiscount = async () => {
       if (selectedProduct && selectedCustomer && discountPercent >= 0) {
+        const tier = getCustomerTierLabel(selectedCustomer);
         const res = await apiClient.post<{
           allowed: boolean;
           requiresApproval: boolean;
           approvalRole: string | null;
           reason: string;
         }>("/discount-rules/evaluate", {
-          customerTier: selectedCustomer.tier,
+          customerTier: tier,
           productCategory: selectedProduct.category,
           discountPercent,
         });
@@ -1673,7 +1710,7 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
                     <option value="">-- Choose active customer --</option>
                     {customers.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.companyName} ({c.name}) — Tier: {c.tier}
+                        {formatCustomerOptionLabel(c)}
                       </option>
                     ))}
                   </select>
@@ -1696,13 +1733,15 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
                 <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-[#0D69B2]" />
-                    <span className="font-bold text-slate-900 dark:text-slate-100">{selectedCustomer.companyName}</span>
-                    <span className="text-slate-400">({selectedCustomer.email})</span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100">{getCustomerNameLabel(selectedCustomer)}</span>
+                    {getCustomerEmailLabel(selectedCustomer) && (
+                      <span className="text-slate-400">({getCustomerEmailLabel(selectedCustomer)})</span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 font-semibold">
                     <span className="text-slate-500">Tier:</span>
                     <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/30 font-bold">
-                      {selectedCustomer.tier} TIER
+                      {getCustomerTierLabel(selectedCustomer)} TIER
                     </span>
                   </div>
                 </div>

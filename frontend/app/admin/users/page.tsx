@@ -20,6 +20,7 @@ import {
   Eye,
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
+import { getRoleDisplayName } from "@/lib/role-utils";
 
 export type UserRole =
   | "ADMIN"
@@ -181,7 +182,7 @@ export default function TeamAndRolesPage() {
           >
             {ROLES_LIST.map((r) => (
               <option key={r} value={r} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-                {r}
+                {getRoleDisplayName(r)}
               </option>
             ))}
           </select>
@@ -352,7 +353,7 @@ export default function TeamAndRolesPage() {
             <option value="ALL">All Roles</option>
             {ROLES_LIST.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {getRoleDisplayName(r)}
               </option>
             ))}
           </select>

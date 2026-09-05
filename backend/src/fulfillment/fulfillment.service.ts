@@ -19,6 +19,10 @@ import { CreateWarehouseDto } from './dto/create-warehouse.dto';
 import { UpdateWarehouseDto } from './dto/update-warehouse.dto';
 import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { FulfillBackorderDto } from './dto/fulfill-backorder.dto';
+import {
+  AdjustInventoryDto,
+  InventoryAdjustmentType,
+} from './dto/adjust-inventory.dto';
 
 @Injectable()
 export class FulfillmentService implements OnModuleInit {
@@ -92,7 +96,14 @@ export class FulfillmentService implements OnModuleInit {
 
   // --- FULFILLMENT CREATION & ENGINE ORCHESTRATION ---
 
-  async createFulfillmentForQuotation(quotationId: string, currentUser: any) {
+  async createFulfillmentForQuotation(
+    quotationId: string,
+    currentUser: any,
+    manualAllocations?: Array<{
+      lineId: string;
+      allocations: Array<{ warehouseId: string; quantity: number }>;
+    }>,
+  ) {
     const quotation = await this.prisma.quotation.findUnique({
       where: { id: quotationId },
       include: {
@@ -156,11 +167,129 @@ export class FulfillmentService implements OnModuleInit {
       },
     });
 
-    const plan = this.fulfillmentEngine.calculateFulfillmentPlan(
-      engineInput,
-      formattedWarehouses,
-      inventorySnapshots,
-    );
+    let plan: any;
+
+    if (manualAllocations && Array.isArray(manualAllocations) && manualAllocations.length > 0) {
+      // Manual Warehouse Split Override logic
+      const lineResults: any[] = [];
+      let totalAllocated = 0;
+      let totalBackordered = 0;
+
+      for (const line of quotation.lines) {
+        const alreadyAllocated = existingAllocationsMap.get(line.id) || 0;
+        const remainingNeeded = Math.max(0, line.quantity - alreadyAllocated);
+
+        const manualOverrideForLine = manualAllocations.find((m) => m.lineId === line.id);
+
+        if (manualOverrideForLine && Array.isArray(manualOverrideForLine.allocations)) {
+          const lineAllocations: any[] = [];
+          const seenWarehouseIds = new Set<string>();
+          let lineTotalAllocated = 0;
+
+          for (const allocInput of manualOverrideForLine.allocations) {
+            const allocQty = Number(allocInput.quantity) || 0;
+            if (allocQty < 0) {
+              throw new BadRequestException(
+                `Allocation quantity for line '${line.product.name}' cannot be negative.`,
+              );
+            }
+            if (allocQty === 0) continue;
+
+            if (seenWarehouseIds.has(allocInput.warehouseId)) {
+              throw new BadRequestException(
+                `Duplicate warehouse allocation for product '${line.product.name}'.`,
+              );
+            }
+            seenWarehouseIds.add(allocInput.warehouseId);
+
+            const warehouse = formattedWarehouses.find((w) => w.id === allocInput.warehouseId);
+            if (!warehouse) {
+              throw new BadRequestException(
+                `Warehouse with ID '${allocInput.warehouseId}' is not active or does not exist.`,
+              );
+            }
+
+            const invItem = inventorySnapshots.find(
+              (i) => i.warehouseId === allocInput.warehouseId && i.productId === line.productId,
+            );
+            const availableStock = invItem
+              ? Math.max(0, invItem.quantityOnHand - invItem.quantityReserved)
+              : 0;
+
+            if (allocQty > availableStock) {
+              throw new BadRequestException(
+                `Allocation of ${allocQty} units from warehouse '${warehouse.code}' exceeds available stock of ${availableStock} for product '${line.product.name}'.`,
+              );
+            }
+
+            lineTotalAllocated += allocQty;
+            lineAllocations.push({
+              warehouseId: warehouse.id,
+              warehouseCode: warehouse.code,
+              allocatedQuantity: allocQty,
+            });
+          }
+
+          if (lineTotalAllocated > remainingNeeded) {
+            throw new BadRequestException(
+              `Total manual allocation (${lineTotalAllocated}) exceeds requested remaining quantity (${remainingNeeded}) for product '${line.product.name}'.`,
+            );
+          }
+
+          const backorderQuantity = Math.max(0, remainingNeeded - lineTotalAllocated);
+          totalAllocated += lineTotalAllocated;
+          totalBackordered += backorderQuantity;
+
+          lineResults.push({
+            lineId: line.id,
+            productId: line.productId,
+            requestedQuantity: line.quantity,
+            alreadyAllocatedQuantity: alreadyAllocated,
+            remainingNeededQuantity: remainingNeeded,
+            allocations: lineAllocations,
+            backorderQuantity,
+            isFullyAllocated: backorderQuantity === 0,
+          });
+        } else {
+          // Fallback to engine calculation for line without manual override specified
+          const singleLineInput = [
+            {
+              lineId: line.id,
+              productId: line.productId,
+              requestedQuantity: line.quantity,
+              alreadyAllocatedQuantity: alreadyAllocated,
+            },
+          ];
+          const autoPlan = this.fulfillmentEngine.calculateFulfillmentPlan(
+            singleLineInput,
+            formattedWarehouses,
+            inventorySnapshots,
+          );
+          if (autoPlan.lineResults[0]) {
+            lineResults.push(autoPlan.lineResults[0]);
+            totalAllocated += autoPlan.lineResults[0].allocations.reduce(
+              (sum: number, a: any) => sum + a.allocatedQuantity,
+              0,
+            );
+            totalBackordered += autoPlan.lineResults[0].backorderQuantity;
+          }
+        }
+      }
+
+      plan = {
+        totalAllocated,
+        totalBackordered,
+        hasBackorder: lineResults.some((l) => l.backorderQuantity > 0),
+        lineResults,
+      };
+    } else {
+      // Standard automatic engine plan
+      plan = this.fulfillmentEngine.calculateFulfillmentPlan(
+        engineInput,
+        formattedWarehouses,
+        inventorySnapshots,
+      );
+    }
 
     // Execute database allocations & backorders inside Prisma transaction
     const result = await this.prisma.$transaction(async (tx) => {
@@ -801,4 +930,140 @@ export class FulfillmentService implements OnModuleInit {
       },
     });
   }
+
+  // --- INVENTORY ADJUSTMENT (INCREASE / DECREASE / SET) ---
+
+  async adjustInventory(inventoryItemId: string, dto: AdjustInventoryDto, currentUser: any) {
+    const item = await this.prisma.inventoryItem.findUnique({
+      where: { id: inventoryItemId },
+      include: { warehouse: true, product: true },
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Inventory item with ID '${inventoryItemId}' not found`);
+    }
+
+    const previousQuantity = item.quantityOnHand;
+    let newQuantity: number;
+
+    switch (dto.type) {
+      case InventoryAdjustmentType.INCREASE:
+        newQuantity = previousQuantity + dto.quantity;
+        break;
+
+      case InventoryAdjustmentType.DECREASE:
+        newQuantity = previousQuantity - dto.quantity;
+        if (newQuantity < 0) {
+          throw new BadRequestException(
+            `Cannot decrease stock by ${dto.quantity}. Current on-hand is ${previousQuantity} for product '${item.product.name}' at '${item.warehouse.name}'. Operation would result in negative stock.`,
+          );
+        }
+        // Also check that new quantity doesn't go below reserved
+        if (newQuantity < item.quantityReserved) {
+          throw new BadRequestException(
+            `Cannot decrease stock to ${newQuantity} because ${item.quantityReserved} units are already reserved for fulfillment. Free up reservations first.`,
+          );
+        }
+        break;
+
+      case InventoryAdjustmentType.SET:
+        newQuantity = dto.quantity;
+        if (newQuantity < 0) {
+          throw new BadRequestException('Cannot set stock to a negative value.');
+        }
+        if (newQuantity < item.quantityReserved) {
+          throw new BadRequestException(
+            `Cannot set stock to ${newQuantity} because ${item.quantityReserved} units are reserved. Resolve reservations first or increase the set quantity.`,
+          );
+        }
+        break;
+
+      default:
+        throw new BadRequestException('Invalid adjustment type.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.inventoryItem.update({
+        where: { id: inventoryItemId },
+        data: { quantityOnHand: newQuantity },
+        include: { warehouse: true, product: true },
+      });
+
+      const adjustment = await tx.inventoryAdjustment.create({
+        data: {
+          inventoryItemId: item.id,
+          productId: item.productId,
+          warehouseId: item.warehouseId,
+          userId: currentUser?.id || null,
+          type: dto.type,
+          quantity: dto.quantity,
+          previousQuantity,
+          newQuantity,
+          reason: dto.reason || null,
+        },
+        include: { user: { select: { id: true, name: true, role: true } } },
+      });
+
+      this.logger.log(
+        `[INVENTORY] ${dto.type} by ${dto.quantity} for product '${item.product.name}' ` +
+          `at '${item.warehouse.code}' | ${previousQuantity} → ${newQuantity} ` +
+          `(by user: ${currentUser?.name || 'system'})`,
+      );
+
+      return {
+        id: updated.id,
+        warehouseId: updated.warehouseId,
+        warehouseName: updated.warehouse.name,
+        warehouseCode: updated.warehouse.code,
+        productId: updated.productId,
+        productName: updated.product.name,
+        productSku: updated.product.sku,
+        quantityOnHand: updated.quantityOnHand,
+        quantityReserved: updated.quantityReserved,
+        availableQuantity: Math.max(0, updated.quantityOnHand - updated.quantityReserved),
+        reorderLevel: updated.reorderLevel,
+        adjustment: {
+          id: adjustment.id,
+          type: adjustment.type,
+          quantity: adjustment.quantity,
+          previousQuantity: adjustment.previousQuantity,
+          newQuantity: adjustment.newQuantity,
+          reason: adjustment.reason,
+          adjustedBy: adjustment.user?.name || 'System',
+          createdAt: adjustment.createdAt,
+        },
+        updatedAt: updated.updatedAt,
+      };
+    });
+  }
+
+  async getInventoryAdjustments(inventoryItemId: string) {
+    const item = await this.prisma.inventoryItem.findUnique({
+      where: { id: inventoryItemId },
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Inventory item with ID '${inventoryItemId}' not found`);
+    }
+
+    const adjustments = await this.prisma.inventoryAdjustment.findMany({
+      where: { inventoryItemId },
+      include: { user: { select: { id: true, name: true, role: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return adjustments.map((a) => ({
+      id: a.id,
+      type: a.type,
+      quantity: a.quantity,
+      previousQuantity: a.previousQuantity,
+      newQuantity: a.newQuantity,
+      reason: a.reason,
+      adjustedBy: a.user?.name || 'System',
+      adjustedByRole: a.user?.role,
+      createdAt: a.createdAt,
+    }));
+  }
 }
+

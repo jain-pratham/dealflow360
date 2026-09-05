@@ -20,6 +20,7 @@ import { CreateWarehouseDto } from './dto/create-warehouse.dto';
 import { UpdateWarehouseDto } from './dto/update-warehouse.dto';
 import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { FulfillBackorderDto } from './dto/fulfill-backorder.dto';
+import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
 
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -29,13 +30,18 @@ export class FulfillmentController {
   // --- FULFILLMENT & MULTI-WAREHOUSE ALLOCATION ENDPOINTS ---
 
   @Post('fulfillment/quotation/:quotationId')
-  @Roles(UserRole.ADMIN, UserRole.SALES_REP, UserRole.SALES_MANAGER)
+  @Roles(UserRole.ADMIN, UserRole.SALES_REP, UserRole.SALES_MANAGER, UserRole.FINANCE)
   @HttpCode(HttpStatus.OK)
   async createFulfillment(
     @Param('quotationId') quotationId: string,
+    @Body() body: any,
     @GetUser() currentUser: any,
   ) {
-    return this.fulfillmentService.createFulfillmentForQuotation(quotationId, currentUser);
+    return this.fulfillmentService.createFulfillmentForQuotation(
+      quotationId,
+      currentUser,
+      body?.manualAllocations,
+    );
   }
 
   @Post('fulfillment/allocation/:allocationId/ship')
@@ -120,6 +126,12 @@ export class FulfillmentController {
   // --- INVENTORY MANAGEMENT ENDPOINTS ---
 
   @Get('inventory')
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.FINANCE,
+    UserRole.SALES_REP,
+    UserRole.SALES_MANAGER,
+  )
   async getInventory(
     @Query('warehouseId') warehouseId?: string,
     @Query('search') search?: string,
@@ -128,6 +140,12 @@ export class FulfillmentController {
   }
 
   @Get('warehouses/:warehouseId/inventory')
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.FINANCE,
+    UserRole.SALES_REP,
+    UserRole.SALES_MANAGER,
+  )
   async getWarehouseInventory(
     @Param('warehouseId') warehouseId: string,
     @Query('search') search?: string,
@@ -139,5 +157,24 @@ export class FulfillmentController {
   @Roles(UserRole.ADMIN)
   async updateInventory(@Body() dto: UpdateInventoryDto) {
     return this.fulfillmentService.updateInventory(dto);
+  }
+
+  @Post('inventory/:inventoryItemId/adjust')
+  @Roles(UserRole.ADMIN, UserRole.FINANCE)
+  @HttpCode(HttpStatus.OK)
+  async adjustInventory(
+    @Param('inventoryItemId') inventoryItemId: string,
+    @Body() dto: AdjustInventoryDto,
+    @GetUser() currentUser: any,
+  ) {
+    return this.fulfillmentService.adjustInventory(inventoryItemId, dto, currentUser);
+  }
+
+  @Get('inventory/:inventoryItemId/adjustments')
+  @Roles(UserRole.ADMIN, UserRole.FINANCE)
+  async getInventoryAdjustments(
+    @Param('inventoryItemId') inventoryItemId: string,
+  ) {
+    return this.fulfillmentService.getInventoryAdjustments(inventoryItemId);
   }
 }

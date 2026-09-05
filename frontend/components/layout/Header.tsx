@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/context/theme-context";
 import { useAuth } from "@/context/auth-context";
+import { getRoleDisplayName } from "@/lib/role-utils";
 
 interface HeaderProps {
   sidebarCollapsed: boolean;
@@ -64,19 +65,8 @@ export default function Header({
       : "Dashboard";
 
   // Helpers for user profile display
-  const userName = user?.name || user?.email?.split("@")[0] || "Pratham jain";
-  const userRoleText =
-    user?.role === "ADMIN"
-      ? "Company admin"
-      : user?.role === "SALES_REP"
-      ? "Sales Representative"
-      : user?.role === "SALES_MANAGER"
-      ? "Sales Manager"
-      : user?.role === "FINANCE"
-      ? "Finance Admin"
-      : user?.role === "CUSTOMER"
-      ? "Customer Account"
-      : "Company admin";
+  const userName = user?.name || user?.email?.split("@")[0] || "User";
+  const userRoleText = getRoleDisplayName(user?.role);
 
   const initials = user?.name
     ? user.name
@@ -193,10 +183,10 @@ export default function Header({
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs font-bold text-slate-900 dark:text-white truncate leading-tight">
-                    {userName}
+                    {userRoleText}
                   </span>
                   <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate leading-tight">
-                    {userRoleText}
+                    {user?.email || "admin@dealflow360.com"}
                   </span>
                 </div>
               </div>
