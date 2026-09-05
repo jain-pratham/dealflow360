@@ -4,6 +4,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { InvoiceStatus, InvoiceType, LineType } from '@prisma/client';
 import { BillingService } from './billing.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { DealHealthService } from '../deal-health/deal-health.service';
 
 describe('BillingService', () => {
   let service: BillingService;
@@ -39,11 +40,16 @@ describe('BillingService', () => {
     $transaction: jest.fn((cb) => cb(mockPrismaService)),
   };
 
+  const mockDealHealthService = {
+    recalculateQuotationHealth: jest.fn().mockResolvedValue({}),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BillingService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: DealHealthService, useValue: mockDealHealthService },
       ],
     }).compile();
 

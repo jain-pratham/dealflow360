@@ -17,6 +17,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PriceListsService } from '../price-lists/price-lists.service';
 import { DiscountRulesService } from '../discount-rules/discount-rules.service';
 import { MailService } from '../mail/mail.service';
+import { DealHealthService } from '../deal-health/deal-health.service';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { AddQuotationLineDto } from './dto/add-quotation-line.dto';
 import { UpdateQuotationLineDto } from './dto/update-quotation-line.dto';
@@ -31,6 +32,7 @@ export class QuotationsService {
     private readonly priceListsService: PriceListsService,
     private readonly discountRulesService: DiscountRulesService,
     private readonly mailService: MailService,
+    private readonly dealHealthService: DealHealthService,
   ) {}
 
   private async generateQuoteNumber(): Promise<string> {
@@ -356,6 +358,10 @@ export class QuotationsService {
     });
 
     this.logger.log(`[AUDIT] Quotation created: ID=${created?.id}, QuoteNumber=${created?.quoteNumber}`);
+    
+    if (created) {
+      this.dealHealthService.recalculateQuotationHealth(created.id).catch(e => this.logger.error('Deal health recalculation failed', e));
+    }
 
     return this.transformQuotation(created);
   }
@@ -401,8 +407,8 @@ export class QuotationsService {
       taxRate,
     );
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.quotationLine.create({
+    const createdLine = await this.prisma.$transaction(async (tx) => {
+      const line = await tx.quotationLine.create({
         data: {
           quotationId,
           productId: product.id,
@@ -419,7 +425,14 @@ export class QuotationsService {
       });
 
       await this.recalculateQuotationTotals(tx, quotationId);
+      return line;
     });
+
+    this.logger.log(`[AUDIT] Line ${createdLine?.id} added to Quotation ${quotationId}`);
+
+    if (createdLine) {
+      this.dealHealthService.recalculateQuotationHealth(quotationId).catch(e => this.logger.error('Deal health recalculation failed', e));
+    }
 
     return this.findOne(quotationId);
   }
@@ -476,6 +489,8 @@ export class QuotationsService {
 
       await this.recalculateQuotationTotals(tx, quotationId);
     });
+    
+    this.dealHealthService.recalculateQuotationHealth(quotationId).catch(e => this.logger.error('Deal health recalculation failed', e));
 
     return this.findOne(quotationId);
   }
@@ -502,6 +517,8 @@ export class QuotationsService {
 
       await this.recalculateQuotationTotals(tx, quotationId);
     });
+
+    this.dealHealthService.recalculateQuotationHealth(quotationId).catch(e => this.logger.error('Deal health recalculation failed', e));
 
     return this.findOne(quotationId);
   }
@@ -556,7 +573,7 @@ export class QuotationsService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedQuotation = await this.prisma.$transaction(async (tx) => {
       if (requiresApproval) {
         // Create Approval Request
         const approvalRequest = await tx.approvalRequest.create({
@@ -615,6 +632,12 @@ export class QuotationsService {
         },
       });
     });
+
+    if (updatedQuotation) {
+      this.dealHealthService.recalculateQuotationHealth(quotationId).catch(e => this.logger.error('Deal health recalculation failed', e));
+    }
+
+    return this.transformQuotation(updatedQuotation);
   }
 
   // --- SEND QUOTATION TO CUSTOMER ---
@@ -682,6 +705,8 @@ export class QuotationsService {
     );
 
     this.logger.log(`[AUDIT] Quotation ${quotation.quoteNumber} sent to customer ${quotation.customer.contactEmail}`);
+
+    this.dealHealthService.recalculateQuotationHealth(quotationId).catch(e => this.logger.error('Deal health recalculation failed', e));
 
     return this.findOne(quotationId);
   }

@@ -97,6 +97,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           icon: React.createElement(Sparkles, { size: 18 }),
         },
         {
+          title: "Deal Health",
+          href: "/admin/deal-health",
+          icon: React.createElement(HeartPulse, { size: 18 }),
+        },
+        {
           title: "Reports",
           href: "/admin/reports",
           icon: React.createElement(FileText, { size: 18 }),
@@ -250,6 +255,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           title: "Credit Notes",
           href: "/finance/credit-notes",
           icon: React.createElement(Receipt, { size: 18 }),
+        },
+        {
+          title: "Deal Health",
+          href: "/admin/deal-health",
+          icon: React.createElement(HeartPulse, { size: 18 }),
         },
         {
           title: "Reports",

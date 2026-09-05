@@ -8,12 +8,16 @@ import {
 } from '@nestjs/common';
 import { ApprovalRoleRequired, ApprovalStatus, QuotationStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { DealHealthService } from '../deal-health/deal-health.service';
 
 @Injectable()
 export class ApprovalsService {
   private readonly logger = new Logger(ApprovalsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly dealHealthService: DealHealthService,
+  ) {}
 
   private transformApprovalRequest(ar: any) {
     return {
@@ -171,6 +175,11 @@ export class ApprovalsService {
 
     this.logger.log(`[AUDIT] Approval request ${id} APPROVED by ${currentUser.name}`);
 
+    // Fire-and-forget deal health recalculation
+    this.dealHealthService
+      .recalculateQuotationHealth(ar.quotationId)
+      .catch((e) => this.logger.error('Deal health recalculation failed after approval', e));
+
     return this.findOne(id);
   }
 
@@ -228,6 +237,11 @@ export class ApprovalsService {
     });
 
     this.logger.log(`[AUDIT] Approval request ${id} REJECTED by ${currentUser.name}`);
+
+    // Fire-and-forget deal health recalculation
+    this.dealHealthService
+      .recalculateQuotationHealth(ar.quotationId)
+      .catch((e) => this.logger.error('Deal health recalculation failed after rejection', e));
 
     return this.findOne(id);
   }

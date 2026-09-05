@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import {
   InvoiceStatus,
@@ -16,12 +18,17 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { QueryInvoicesDto } from './dto/query-invoices.dto';
+import { DealHealthService } from '../deal-health/deal-health.service';
 
 @Injectable()
 export class BillingService {
   private readonly logger = new Logger(BillingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => DealHealthService))
+    private readonly dealHealthService: DealHealthService,
+  ) {}
 
   private async generateInvoiceNumber(type: InvoiceType): Promise<string> {
     const year = new Date().getFullYear();
@@ -398,6 +405,16 @@ export class BillingService {
     });
 
     this.logger.log(`[BILLING] Payment of ${invoice.currency} ${paymentAmount} recorded for Invoice ${invoice.invoiceNumber}`);
+
+    if (invoice.quotationId) {
+      this.dealHealthService
+        .recalculateQuotationHealth(invoice.quotationId)
+        .catch((err) =>
+          this.logger.error(
+            `Failed to recalculate deal health after payment for quotation ${invoice.quotationId}: ${err.message}`,
+          ),
+        );
+    }
 
     return {
       message: `Payment of ${invoice.currency} ${paymentAmount} recorded successfully`,

@@ -116,6 +116,12 @@ enum DealHealthAlertType {
   STALLED_DEAL
   DISCOUNT_ANOMALY
   DELIVERY_SLIPPAGE
+  APPROVAL_DELAY
+  NEGOTIATION_ESCALATION
+  STOCK_SHORTAGE
+  PAYMENT_DELAY
+  PAYMENT_FAILURE
+  SUBSCRIPTION_BILLING_RISK
 }
 
 enum DealHealthSeverity {
@@ -709,13 +715,16 @@ model QuotationComment {
 // -----------------------------------------------------------------------------
 
 model DealHealthAlert {
-  id          String              @id @default(uuid()) @db.Uuid
-  quotationId String              @db.Uuid
-  alertType   DealHealthAlertType
-  severity    DealHealthSeverity  @default(MEDIUM)
-  message     String
-  isResolved  Boolean             @default(false)
-  createdAt   DateTime            @default(now())
+  id               String              @id @default(uuid()) @db.Uuid
+  quotationId      String              @db.Uuid
+  alertType        DealHealthAlertType
+  severity         DealHealthSeverity  @default(MEDIUM)
+  title            String
+  message          String
+  isResolved       Boolean             @default(false)
+  deduplicationKey String?
+  resolvedAt       DateTime?
+  createdAt        DateTime            @default(now())
 
   // Relationships
   quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)

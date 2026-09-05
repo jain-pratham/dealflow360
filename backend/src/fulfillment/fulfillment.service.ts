@@ -23,6 +23,7 @@ import {
   AdjustInventoryDto,
   InventoryAdjustmentType,
 } from './dto/adjust-inventory.dto';
+import { DealHealthService } from '../deal-health/deal-health.service';
 
 @Injectable()
 export class FulfillmentService implements OnModuleInit {
@@ -31,6 +32,7 @@ export class FulfillmentService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fulfillmentEngine: FulfillmentEngineService,
+    private readonly dealHealthService: DealHealthService,
   ) {}
 
   async onModuleInit() {
@@ -806,6 +808,12 @@ export class FulfillmentService implements OnModuleInit {
 
       return updatedBackorder;
     });
+
+    // Fire-and-forget deal health recalculation (quotationId captured before tx)
+    const quotationIdForHealthCheck = backorder!.quotationId;
+    this.dealHealthService
+      .recalculateQuotationHealth(quotationIdForHealthCheck)
+      .catch((e) => this.logger.error('Deal health recalculation failed after backorder fulfillment', e));
   }
 
   // --- WAREHOUSE & INVENTORY MANAGEMENT ---
