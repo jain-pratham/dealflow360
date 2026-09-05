@@ -76,15 +76,21 @@ enum LineType {
 
 enum FulfillmentStatus {
   PENDING
+  ALLOCATED
   PARTIALLY_FULFILLED
   FULFILLED
   BACKORDERED
+  CANCELLED
 }
 
 enum BackorderStatus {
+  OPEN
   WAITING_FOR_STOCK
   READY_TO_CONSOLIDATE
   CONSOLIDATED
+  PARTIALLY_FULFILLED
+  FULFILLED
+  CANCELLED
 }
 
 enum InvoiceType {
@@ -355,6 +361,8 @@ model QuotationLine {
   variant          ProductVariant?   @relation(fields: [variantId], references: [id])
   subscriptionPlan SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
   comments         QuotationComment[]
+  allocations      FulfillmentAllocation[]
+  backorders       Backorder[]
 
   @@map("quotation_lines")
 }
@@ -433,8 +441,12 @@ model ProductPairing {
 model Warehouse {
   id                   String   @id @default(uuid()) @db.Uuid
   name                 String   @unique
+  code                 String?  @unique
   location             String
   shippingCostWeighting Decimal @default(1.00) @db.Decimal(5, 2)
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @default(now()) @updatedAt
 
   // Relationships
   inventoryItems InventoryItem[]
@@ -463,33 +475,41 @@ model InventoryItem {
 model FulfillmentAllocation {
   id                String            @id @default(uuid()) @db.Uuid
   quotationId       String            @db.Uuid
+  quotationLineId   String?           @db.Uuid
   warehouseId       String            @db.Uuid
   productId         String            @db.Uuid
   allocatedQuantity Int
+  fulfilledQuantity Int               @default(0)
   isBackorder       Boolean           @default(false)
   status            FulfillmentStatus @default(PENDING)
   createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @default(now()) @updatedAt
 
   // Relationships
-  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
-  product   Product   @relation(fields: [productId], references: [id])
+  quotation Quotation      @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  line      QuotationLine? @relation(fields: [quotationLineId], references: [id], onDelete: SetNull)
+  warehouse Warehouse      @relation(fields: [warehouseId], references: [id])
+  product   Product        @relation(fields: [productId], references: [id])
 
   @@map("fulfillment_allocations")
 }
 
 model Backorder {
-  id              String          @id @default(uuid()) @db.Uuid
-  quotationId     String          @db.Uuid
-  productId       String          @db.Uuid
-  quantityPending Int
-  status          BackorderStatus @default(WAITING_FOR_STOCK)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id                String          @id @default(uuid()) @db.Uuid
+  quotationId       String          @db.Uuid
+  quotationLineId   String?         @db.Uuid
+  productId         String          @db.Uuid
+  originalQuantity  Int             @default(0)
+  quantityPending   Int
+  fulfilledQuantity Int             @default(0)
+  status            BackorderStatus @default(WAITING_FOR_STOCK)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   // Relationships
-  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  product   Product   @relation(fields: [productId], references: [id])
+  quotation Quotation      @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  line      QuotationLine? @relation(fields: [quotationLineId], references: [id], onDelete: SetNull)
+  product   Product        @relation(fields: [productId], references: [id])
 
   @@map("backorders")
 }

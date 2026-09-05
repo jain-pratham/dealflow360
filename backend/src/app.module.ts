@@ -14,6 +14,7 @@ import { QuotationsModule } from './quotations/quotations.module';
 import { ApprovalsModule } from './approvals/approvals.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { CustomerPortalModule } from './customer-portal/customer-portal.module';
+import { FulfillmentModule } from './fulfillment/fulfillment.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CustomerPortalModule } from './customer-portal/customer-portal.module';
     ApprovalsModule,
     RecommendationsModule,
     CustomerPortalModule,
+    FulfillmentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
