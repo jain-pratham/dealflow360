@@ -1,0 +1,270 @@
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { UserRole } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
+import { PrismaService } from '../prisma/prisma.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  private async generateTokens(userId: string, email: string, role: string) {
+    const accessSecret =
+      this.configService.get<string>('JWT_ACCESS_SECRET') ||
+      'dealflow_access_secret_key_2026';
+    const refreshSecret =
+      this.configService.get<string>('JWT_REFRESH_SECRET') ||
+      'dealflow_refresh_secret_key_2026';
+
+    const accessExpiry =
+      this.configService.get<string>('JWT_ACCESS_EXPIRY') || '15m';
+    const refreshExpiry =
+      this.configService.get<string>('JWT_REFRESH_EXPIRY') || '7d';
+
+    const payload = { sub: userId, email, role };
+
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: accessSecret,
+      expiresIn: accessExpiry as any,
+    });
+
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      secret: refreshSecret,
+      expiresIn: refreshExpiry as any,
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  private async updateRefreshTokenHash(userId: string, refreshToken: string | null) {
+    if (!refreshToken) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { refreshTokenHash: null },
+      });
+      return;
+    }
+    const hash = await bcrypt.hash(refreshToken, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshTokenHash: hash },
+    });
+  }
+
+  async register(registerDto: RegisterDto) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: registerDto.email.toLowerCase() },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    const passwordHash = await bcrypt.hash(registerDto.password, 10);
+    const verificationToken = randomBytes(32).toString('hex');
+
+    // Force public registration to default to SALES_REP and isVerified = false
+    const newUser = await this.prisma.user.create({
+      data: {
+        name: registerDto.name,
+        email: registerDto.email.toLowerCase(),
+        passwordHash,
+        role: UserRole.SALES_REP,
+        isActive: true,
+        isVerified: false,
+        emailVerificationToken: verificationToken,
+      },
+    });
+
+    const tokens = await this.generateTokens(
+      newUser.id,
+      newUser.email,
+      newUser.role,
+    );
+    await this.updateRefreshTokenHash(newUser.id, tokens.refreshToken);
+
+    return {
+      message:
+        'Registration successful. Please verify your email address to unlock full CRM features.',
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        isActive: newUser.isActive,
+        isVerified: newUser.isVerified,
+        createdAt: newUser.createdAt,
+      },
+      verificationToken,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
+  }
+
+  async verifyEmail(token: string) {
+    if (!token) {
+      throw new UnauthorizedException('Verification token is required');
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { emailVerificationToken: token },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Invalid or expired verification token');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isVerified: true,
+        emailVerificationToken: null,
+      },
+    });
+
+    return {
+      message: 'Email address verified successfully.',
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        isVerified: updatedUser.isVerified,
+      },
+    };
+  }
+
+  async login(loginDto: LoginDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: loginDto.email.toLowerCase() },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.passwordHash,
+    );
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException(
+        'Account is inactive. Please contact system administrator.',
+      );
+    }
+
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+      },
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
+  }
+
+  async refresh(refreshToken: string) {
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+
+    const refreshSecret =
+      this.configService.get<string>('JWT_REFRESH_SECRET') ||
+      'dealflow_refresh_secret_key_2026';
+
+    let payload: any;
+    try {
+      payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: refreshSecret,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+
+    if (!user || !user.isActive || !user.refreshTokenHash) {
+      throw new UnauthorizedException('User session is invalid or expired');
+    }
+
+    const isRefreshMatch = await bcrypt.compare(
+      refreshToken,
+      user.refreshTokenHash,
+    );
+
+    if (!isRefreshMatch) {
+      throw new UnauthorizedException('Invalid refresh token session');
+    }
+
+    const newTokens = await this.generateTokens(user.id, user.email, user.role);
+    await this.updateRefreshTokenHash(user.id, newTokens.refreshToken);
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        isVerified: user.isVerified,
+      },
+      accessToken: newTokens.accessToken,
+      refreshToken: newTokens.refreshToken,
+    };
+  }
+
+  async logout(userId: string) {
+    await this.updateRefreshTokenHash(userId, null);
+    return { message: 'Successfully logged out' };
+  }
+
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('User account is inactive');
+    }
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      isVerified: user.isVerified,
+      createdAt: user.createdAt,
+    };
+  }
+}
