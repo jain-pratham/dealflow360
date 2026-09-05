@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api-client";
 import AppLayout from "@/components/layout/AppLayout";
@@ -25,6 +26,7 @@ interface QuotationItem {
 }
 
 export default function MyQuotationsPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const [quotations, setQuotations] = useState<QuotationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,7 +184,7 @@ export default function MyQuotationsPage() {
             <h4 className="text-base font-bold text-slate-700 dark:text-slate-300">No Quotations Found</h4>
           </div>
         ) : (
-          <DataTable columns={columns} data={quotations} />
+          <DataTable columns={columns} data={quotations} onRowClick={(row) => router.push(`/portal/quotations/${row.id}`)} />
         )}
       </div>
     </AppLayout>

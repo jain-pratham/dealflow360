@@ -68,4 +68,19 @@ export class CustomerPortalController {
   async getProfile(@GetUser() currentUser: any) {
     return this.customerPortalService.getCustomerProfile(currentUser);
   }
+
+  @Get('invoices')
+  async getInvoices(@GetUser() currentUser: any, @Query() query: any) {
+    return this.customerPortalService.getCustomerInvoices(currentUser, query);
+  }
+
+  @Get('invoices/:id')
+  async getInvoiceById(@Param('id') id: string, @GetUser() currentUser: any) {
+    return this.customerPortalService.getCustomerInvoiceById(id, currentUser);
+  }
+
+  @Get('subscriptions')
+  async getSubscriptions(@GetUser() currentUser: any, @Query() query: any) {
+    return this.customerPortalService.getCustomerSubscriptions(currentUser, query);
+  }
 }

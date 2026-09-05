@@ -400,7 +400,12 @@ export default function AdminUpsellRulesPage() {
             <p className="text-sm font-medium text-slate-500">Loading recommendation pairings...</p>
           </div>
         ) : (
-          <DataTable columns={columns} data={pairings} emptyMessage="No recommendation pairings configured yet." />
+          <DataTable
+            columns={columns}
+            data={pairings}
+            onRowClick={(row) => handleOpenEditModal(row)}
+            emptyMessage="No recommendation pairings configured yet."
+          />
         )}
       </div>
 

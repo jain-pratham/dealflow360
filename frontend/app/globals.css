@@ -1,32 +1,108 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@variant dark (&:where(.dark, .dark *));
 
+/* ==========================================
+   1. LIGHT MODE THEME (Default)
+   ========================================== */
 :root {
-  --primary: #0D69B2;
-  --primary-hover: #0b5a99;
-  --primary-light: rgba(13, 105, 178, 0.08);
-  --accent: #EC2091;
-  --secondary: #F4882E;
-  --secondary-hover: #e07722;
-  --sidebar-bg: #0B2545;
-  
-  --background: #F1F5F9;
-  --foreground: #0F172A;
-  --card: #FFFFFF;
-  --card-foreground: #0F172A;
-  --border: #E2E8F0;
+  /* CRM Brand Core Colors */
+  --crm-blue: #0D69B2;
+  --crm-pink: #EC2091;
+  --crm-orange: #F4882E;
+  --crm-white: #FFFFFF;
+
+  /* Layout & Page Colors */
+  --background: #F1F5F9;        /* Page Main Background (Light Slate) */
+  --surface: #FFFFFF;           /* Card / Modal / Box Background (Pure White) */
+  --color-header-bg: #0D69B2;   /* Top Header Bar Background */
+  --color-sidebar-bg: #0B2545;  /* Sidebar Navigation Background (Dark Navy) */
+
+  /* Text Colors */
+  --foreground: #1E293B;           /* Default Base Text Color */
+  --color-text-primary: #0F172A;   /* Headings & Important Text (Slate 900) */
+  --color-text-secondary: #475569; /* Subtitles, Labels & Descriptions (Slate 600) */
+  --color-text-on-dark: #FFFFFF;   /* Text on Dark Backgrounds/Buttons */
+
+  /* Brand Action & Accent Colors */
+  --primary: #0F172A;
+  --color-primary: #0D69B2;        /* Primary Button / Active Elements */
+  --color-primary-dark: #0B5A99;   /* Hover State for Primary Buttons */
+  --color-primary-light: rgba(13, 105, 178, 0.08); /* Table Hover & Selected Items Light Fill */
+  --color-accent: #EC2091;         /* Pink Highlight / Badges / Special CTA */
+  --color-secondary: #F4882E;      /* Orange Secondary Actions / Warnings */
+
+  /* Borders & Shadows */
+  --border-sharp: #E2E8F0;
+  --color-border: #E2E8F0;         /* Card & Table Row Borders */
+  --border-hover: rgba(13, 105, 178, 0.35); /* Border Hover Glow */
+
+  /* Status Colors */
+  --color-success: #10B981;        /* Success Status / Green Badge */
+  --color-danger: #EF4444;         /* Error / Danger / Delete Button */
+  --color-warning: #F4882E;        /* Pending / Warning Status */
+
+  /* UI Radii */
+  --color-radius-control: 0.625rem; /* Input & Button Border Radius (10px) */
+  --color-radius-card: 0.875rem;    /* Card & Modal Border Radius (14px) */
+
+  /* Shadows (Elevation System) */
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.03);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.05), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  --shadow-hover: 0 8px 20px -2px rgba(13, 105, 178, 0.12), 0 3px 8px -1px rgba(13, 105, 178, 0.06);
+
+  /* Legacy & Helper Aliases */
+  --sidebar-bg: var(--color-sidebar-bg);
+  --card: var(--surface);
+  --card-foreground: var(--color-text-primary);
+  --border: var(--color-border);
   --muted: #64748B;
-  --muted-foreground: #475569;
+  --muted-foreground: var(--color-text-secondary);
 }
 
-html.dark {
-  --sidebar-bg: #111318;
-  --background: #020617;
-  --foreground: #F8FAFC;
-  --card: #0F172A;
-  --card-foreground: #F8FAFC;
-  --border: #1E293B;
+/* ==========================================
+   2. DARK MODE THEME (`.dark` class active)
+   ========================================== */
+.dark, [data-theme="dark"] {
+  /* Layout & Page Colors */
+  --background: #020617;        /* Main Page Background (Deep Slate 950) */
+  --surface: #0F172A;           /* Card / Modal / Container Background (Slate 900) */
+  --color-header-bg: #0A4F87;   /* Dark Mode Header BG */
+  --color-sidebar-bg: #061528;  /* Dark Mode Sidebar BG */
+
+  /* Text Colors */
+  --foreground: #F8FAFC;           /* Default Dark Text Color */
+  --color-text-primary: #F8FAFC;   /* Main Headings & Titles (Slate 50) */
+  --color-text-secondary: #94A3B8; /* Muted Text & Subtitles (Slate 400) */
+  --color-text-on-light: #F0F0F0;
+
+  /* Brand Action & Accent Colors */
+  --primary: #38BDF8;              /* Sky Blue for Accent Highlights */
+  --color-primary: #0D69B2;
+  --color-primary-dark: #38BDF8;
+  --color-primary-light: rgba(13, 105, 178, 0.25);
+  --color-accent: #EC2091;
+  --color-secondary: #F4882E;
+
+  /* Borders & Shadows */
+  --border-sharp: #1E293B;
+  --color-border: #1E293B;         /* Dark Borders (Slate 800) */
+  --border-hover: rgba(56, 189, 248, 0.4);
+
+  /* Dark Elevation Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 6px -1px rgba(0, 0, 0, 0.4), 0 1px 3px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 20px -4px rgba(0, 0, 0, 0.5), 0 4px 8px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 40px -8px rgba(0, 0, 0, 0.6);
+  --shadow-hover: 0 6px 16px -2px rgba(56, 189, 248, 0.18), 0 2px 6px -1px rgba(56, 189, 248, 0.1);
+
+  /* Legacy & Helper Aliases */
+  --sidebar-bg: var(--color-sidebar-bg);
+  --card: var(--surface);
+  --card-foreground: var(--color-text-primary);
+  --border: var(--color-border);
   --muted: #94A3B8;
   --muted-foreground: #64748B;
 }
@@ -41,12 +117,17 @@ html.dark {
   --font-mono: var(--font-geist-mono), monospace;
 }
 
-body {
+/* Base resets & theme binding */
+html, body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   overflow-x: hidden;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark html, .dark body {
+  background-color: #020617;
 }
 
 /* Custom Utilities */
@@ -56,37 +137,17 @@ body {
   -webkit-backdrop-filter: blur(12px);
 }
 
-html.dark .glass-header {
+html.dark .glass-header, .dark .glass-header {
   background: rgba(15, 23, 42, 0.90);
 }
 
 .pulsing-dot {
   position: relative;
   display: inline-flex;
-  height: 8px;
-  width: 8px;
+  height: 6px;
+  width: 6px;
   border-radius: 9999px;
   background-color: #0D69B2;
-}
-
-.pulsing-dot::after {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  border-radius: 9999px;
-  background-color: #0D69B2;
-  opacity: 0.75;
-  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-@keyframes ping {
-  75%, 100% {
-    transform: scale(2);
-    opacity: 0;
-  }
 }
 
 /* Custom Scrollbars */
@@ -104,4 +165,3 @@ html.dark .glass-header {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.5);
 }
-

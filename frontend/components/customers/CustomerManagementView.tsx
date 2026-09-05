@@ -705,7 +705,11 @@ export default function CustomerManagementView() {
                 </button>
               </div>
             ) : (
-              <DataTable columns={columns} data={filteredCustomers} />
+              <DataTable
+                columns={columns}
+                data={filteredCustomers}
+                onRowClick={(row) => setSelectedCustomerDetails(row)}
+              />
             )}
           </div>
         </div>

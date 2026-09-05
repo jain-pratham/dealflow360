@@ -516,7 +516,7 @@ export default function DiscountRulesView() {
                 </button>
               </div>
             ) : (
-              <DataTable columns={columns} data={rules} />
+              <DataTable columns={columns} data={rules} onRowClick={(row) => handleEditClick(row)} />
             )}
           </div>
         </div>

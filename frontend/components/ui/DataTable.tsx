@@ -16,6 +16,7 @@ interface DataTableProps<T> {
   onView?: (row: T) => void;
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
+  onRowClick?: (row: T) => void;
   emptyMessage?: string;
 }
 
@@ -25,8 +26,21 @@ export function DataTable<T extends { id?: string | number }>({
   onView,
   onEdit,
   onDelete,
+  onRowClick,
   emptyMessage = "No data records found.",
 }: DataTableProps<T>) {
+  const handleRowClick = (row: T, e: React.MouseEvent) => {
+    // If target is button or inside button, do not trigger row click
+    if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest("a")) {
+      return;
+    }
+    if (onRowClick) {
+      onRowClick(row);
+    } else if (onView) {
+      onView(row);
+    }
+  };
+
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
       <div className="overflow-x-auto">
@@ -68,7 +82,10 @@ export function DataTable<T extends { id?: string | number }>({
               data.map((row, rIdx) => (
                 <tr
                   key={row.id ?? rIdx}
-                  className="hover:bg-[#0D69B2]/5 transition-colors duration-150 group"
+                  onClick={(e) => handleRowClick(row, e)}
+                  className={`hover:bg-[#0D69B2]/5 transition-colors duration-150 group ${
+                    onRowClick || onView ? "cursor-pointer" : ""
+                  }`}
                 >
                   {columns.map((col, cIdx) => (
                     <td
@@ -94,7 +111,10 @@ export function DataTable<T extends { id?: string | number }>({
                       <div className="flex items-center justify-end gap-1">
                         {onView && (
                           <button
-                            onClick={() => onView(row)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onView(row);
+                            }}
                             className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-slate-500 hover:text-[#0D69B2] hover:bg-[#0D69B2]/10 transition-colors cursor-pointer"
                             title="View Details"
                           >
@@ -103,7 +123,10 @@ export function DataTable<T extends { id?: string | number }>({
                         )}
                         {onEdit && (
                           <button
-                            onClick={() => onEdit(row)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEdit(row);
+                            }}
                             className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-slate-500 hover:text-[#F4882E] hover:bg-[#F4882E]/10 transition-colors cursor-pointer"
                             title="Edit Record"
                           >
@@ -112,7 +135,10 @@ export function DataTable<T extends { id?: string | number }>({
                         )}
                         {onDelete && (
                           <button
-                            onClick={() => onDelete(row)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(row);
+                            }}
                             className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                             title="Delete Record"
                           >

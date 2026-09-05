@@ -1039,7 +1039,11 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
                       return (
                         <tr
                           key={q.id}
-                          className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest("a")) return;
+                            handleOpenDrawer(q);
+                          }}
+                          className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors cursor-pointer ${
                             isSelected ? "bg-blue-50/40 dark:bg-blue-950/20" : ""
                           }`}
                         >

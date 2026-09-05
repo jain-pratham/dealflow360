@@ -306,7 +306,16 @@ export default function SalesFulfillmentPage() {
             <h4 className="text-base font-bold text-slate-700 dark:text-slate-300">No Fulfillment Records Found</h4>
           </div>
         ) : (
-          <DataTable columns={columns} data={allocations} />
+          <DataTable
+            columns={columns}
+            data={allocations}
+            onRowClick={(row) => {
+              if (row.allocatedQuantity > row.fulfilledQuantity && !row.isBackorder) {
+                setShippingAllocation(row);
+                setShipQty(row.allocatedQuantity - row.fulfilledQuantity);
+              }
+            }}
+          />
         )}
       </div>
 

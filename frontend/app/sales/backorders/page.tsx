@@ -327,7 +327,7 @@ export default function BackordersManagementPage() {
             <h4 className="text-base font-bold text-slate-700 dark:text-slate-300">No Backorders Found</h4>
           </div>
         ) : (
-          <DataTable columns={columns} data={backorders} />
+          <DataTable columns={columns} data={backorders} onRowClick={(row) => setSelectedBackorder(row)} />
         )}
       </div>
 

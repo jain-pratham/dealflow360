@@ -8,6 +8,8 @@ import {
 import { ApprovalRoleRequired, ApprovalStatus, QuotationStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DiscountRulesService } from '../discount-rules/discount-rules.service';
+import { BillingService } from '../billing/billing.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CustomerCommentDto } from './dto/customer-comment.dto';
 import { SubmitNegotiationDto } from './dto/submit-negotiation.dto';
 
@@ -18,6 +20,8 @@ export class CustomerPortalService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly discountRulesService: DiscountRulesService,
+    private readonly billingService: BillingService,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   private async getResolvedCustomerId(currentUser: any): Promise<string> {
@@ -511,6 +515,9 @@ export class CustomerPortalService {
           reason: `Quotation confirmed by customer (${currentUser.name || currentUser.email})`,
         },
       });
+
+      // Auto-generate one-time invoices and subscription schedules
+      await this.billingService.processConfirmedQuotation(quotationId, tx);
     });
 
     this.logger.log(`[AUDIT] Quotation ${quotation.quoteNumber} confirmed by customer`);
@@ -543,5 +550,29 @@ export class CustomerPortalService {
       currency: customer.currency,
       createdAt: customer.createdAt,
     };
+  }
+
+  async getCustomerInvoices(currentUser: any, query: any = {}) {
+    const customerId = await this.getResolvedCustomerId(currentUser);
+    return this.billingService.findAllInvoices(
+      { ...query, customerId },
+      { ...currentUser, customerId, role: UserRole.CUSTOMER },
+    );
+  }
+
+  async getCustomerInvoiceById(invoiceId: string, currentUser: any) {
+    const customerId = await this.getResolvedCustomerId(currentUser);
+    return this.billingService.findInvoiceById(
+      invoiceId,
+      { ...currentUser, customerId, role: UserRole.CUSTOMER },
+    );
+  }
+
+  async getCustomerSubscriptions(currentUser: any, query: any = {}) {
+    const customerId = await this.getResolvedCustomerId(currentUser);
+    return this.subscriptionsService.findAll(
+      { ...query, customerId },
+      { ...currentUser, customerId, role: UserRole.CUSTOMER },
+    );
   }
 }

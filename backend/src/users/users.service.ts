@@ -16,6 +16,12 @@ const USER_SELECT_FIELDS = {
   role: true,
   isActive: true,
   isVerified: true,
+  phone: true,
+  address: true,
+  city: true,
+  state: true,
+  country: true,
+  postalCode: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -37,7 +43,56 @@ export class UsersService {
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: USER_SELECT_FIELDS,
+      select: {
+        ...USER_SELECT_FIELDS,
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            companyName: true,
+            contactEmail: true,
+            tier: true,
+          },
+        },
+        quotationsCreated: {
+          select: {
+            id: true,
+            quoteNumber: true,
+            status: true,
+            totalAmount: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
+        approvalsHandled: {
+          select: {
+            id: true,
+            status: true,
+            requiredRole: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
+        auditLogs: {
+          select: {
+            id: true,
+            action: true,
+            timestamp: true,
+          },
+          orderBy: { timestamp: 'desc' },
+          take: 10,
+        },
+        _count: {
+          select: {
+            quotationsCreated: true,
+            approvalsHandled: true,
+            auditLogs: true,
+            commentsWritten: true,
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -112,29 +167,38 @@ export class UsersService {
 
     const oldRole = targetUser.role;
 
-    const updatedUser = await this.prisma.user.update({
+    const addressVal = dto.address !== undefined ? dto.address : dto.streetAddress;
+    await this.prisma.user.update({
       where: { id },
       data: {
-        ...(dto.name && { name: dto.name }),
-        ...(dto.email && { email: dto.email.toLowerCase() }),
-        ...(dto.role && { role: dto.role }),
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.email !== undefined && { email: dto.email.toLowerCase() }),
+        ...(dto.role !== undefined && { role: dto.role }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
         ...(dto.isVerified !== undefined && { isVerified: dto.isVerified }),
+        ...(dto.phone !== undefined && { phone: dto.phone }),
+        ...(addressVal !== undefined && { address: addressVal }),
+        ...(dto.city !== undefined && { city: dto.city }),
+        ...(dto.state !== undefined && { state: dto.state }),
+        ...(dto.country !== undefined && { country: dto.country }),
+        ...(dto.postalCode !== undefined && { postalCode: dto.postalCode }),
       },
-      select: USER_SELECT_FIELDS,
     });
 
     // Notify user via email if their role was changed
     if (dto.role && dto.role !== oldRole) {
-      await this.mailService.sendRoleChangeNotification(
-        updatedUser.email,
-        updatedUser.name,
-        oldRole,
-        updatedUser.role,
-      );
+      const freshUser = await this.prisma.user.findUnique({ where: { id } });
+      if (freshUser) {
+        await this.mailService.sendRoleChangeNotification(
+          freshUser.email,
+          freshUser.name,
+          oldRole,
+          freshUser.role,
+        );
+      }
     }
 
-    return updatedUser;
+    return this.findOne(id);
   }
 
   async updateRole(id: string, newRole: UserRole, currentAdminId?: string) {

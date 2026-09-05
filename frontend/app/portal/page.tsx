@@ -226,7 +226,7 @@ export default function CustomerPortalDashboard() {
             </p>
           </div>
         ) : (
-          <DataTable columns={columns} data={quotations} />
+          <DataTable columns={columns} data={quotations} onRowClick={(row) => router.push(`/portal/quotations/${row.id}`)} />
         )}
       </div>
     </AppLayout>

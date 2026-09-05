@@ -604,7 +604,7 @@ export default function PriceListManagementView() {
                 </button>
               </div>
             ) : (
-              <DataTable columns={columns} data={priceLists} />
+              <DataTable columns={columns} data={priceLists} onRowClick={(row) => loadPriceListDetails(row.id)} />
             )}
           </div>
         </div>

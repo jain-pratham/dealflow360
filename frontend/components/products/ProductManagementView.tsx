@@ -522,7 +522,11 @@ export default function ProductManagementView() {
                 </button>
               </div>
             ) : (
-              <DataTable columns={columns} data={products} />
+              <DataTable
+                columns={columns}
+                data={products}
+                onRowClick={(row) => handleEditClick(row)}
+              />
             )}
           </div>
         </div>

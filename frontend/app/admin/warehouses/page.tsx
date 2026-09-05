@@ -181,7 +181,7 @@ export default function AdminWarehousesPage() {
       {loading ? (
         <div className="p-12 text-center text-slate-400 font-medium">Loading warehouses...</div>
       ) : (
-        <DataTable columns={columns} data={warehouses} />
+        <DataTable columns={columns} data={warehouses} onRowClick={(row) => handleOpenModal(row)} />
       )}
 
       {/* Modal: Add/Edit Warehouse */}

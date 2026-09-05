@@ -58,8 +58,12 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
       <div className="relative flex items-center h-16 px-4 border-b border-white/10 justify-between">
         {!collapsed ? (
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0D69B2] to-[#EC2091] flex items-center justify-center font-extrabold text-white text-lg shadow-md shrink-0">
-              DF
+            <div className="bg-white/95 px-2.5 py-1 rounded-xl shadow-md flex items-center justify-center shrink-0 border border-white/20">
+              <img
+                src="/logo.png"
+                alt="Logo"
+                className="h-7 w-auto max-w-[120px] object-contain"
+              />
             </div>
             <div className="flex flex-col truncate">
               <span className="font-extrabold text-sm tracking-wide text-white leading-tight">
@@ -71,8 +75,12 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             </div>
           </div>
         ) : (
-          <div className="mx-auto w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0D69B2] to-[#EC2091] flex items-center justify-center font-extrabold text-white text-sm shadow-md">
-            DF
+          <div className="mx-auto bg-white/95 p-1 px-1.5 rounded-xl shadow-md flex items-center justify-center border border-white/20">
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="h-6 w-auto max-w-[32px] object-contain"
+            />
           </div>
         )}
 

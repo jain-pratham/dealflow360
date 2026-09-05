@@ -38,6 +38,7 @@ interface LineItem {
   taxAmount: number;
   subtotal: number;
   finalUnitPrice: number;
+  lineType?: string;
 }
 
 interface QuotationCommentItem {
@@ -421,7 +422,18 @@ export default function CustomerQuotationDetailPage({
                   {quotation.lines.map((line) => (
                     <tr key={line.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                       <td className="px-5 py-4">
-                        <div className="font-bold text-slate-900 dark:text-white">{line.productName}</div>
+                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>{line.productName}</span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              line.lineType === "RECURRING"
+                                ? "bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300"
+                                : "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300"
+                            }`}
+                          >
+                            {line.lineType === "RECURRING" ? "Recurring" : "One-Time"}
+                          </span>
+                        </div>
                         <div className="text-[11px] text-slate-400">SKU: {line.sku}</div>
                       </td>
                       <td className="px-5 py-4 font-semibold text-slate-700 dark:text-slate-300">

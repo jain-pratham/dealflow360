@@ -81,6 +81,7 @@ export class AuthService {
     const verificationToken = randomBytes(32).toString('hex');
 
     // Force public registration to default to SALES_REP and isVerified = false
+    const addressVal = registerDto.address || registerDto.streetAddress;
     const newUser = await this.prisma.user.create({
       data: {
         name: registerDto.name,
@@ -90,7 +91,13 @@ export class AuthService {
         isActive: true,
         isVerified: false,
         emailVerificationToken: verificationToken,
-      },
+        phone: registerDto.phone,
+        address: addressVal,
+        city: registerDto.city,
+        state: registerDto.state,
+        country: registerDto.country,
+        postalCode: registerDto.postalCode,
+      } as any,
     });
 
     const tokens = await this.generateTokens(
@@ -117,6 +124,12 @@ export class AuthService {
         role: newUser.role,
         isActive: newUser.isActive,
         isVerified: newUser.isVerified,
+        phone: newUser.phone,
+        address: newUser.address,
+        city: newUser.city,
+        state: newUser.state,
+        country: newUser.country,
+        postalCode: newUser.postalCode,
         createdAt: newUser.createdAt,
       },
       verificationToken,
@@ -191,6 +204,12 @@ export class AuthService {
         role: user.role,
         isActive: user.isActive,
         isVerified: user.isVerified,
+        phone: user.phone,
+        address: user.address,
+        city: user.city,
+        state: user.state,
+        country: user.country,
+        postalCode: user.postalCode,
         createdAt: user.createdAt,
       },
       accessToken: tokens.accessToken,
@@ -244,6 +263,12 @@ export class AuthService {
         role: user.role,
         isActive: user.isActive,
         isVerified: user.isVerified,
+        phone: user.phone,
+        address: user.address,
+        city: user.city,
+        state: user.state,
+        country: user.country,
+        postalCode: user.postalCode,
       },
       accessToken: newTokens.accessToken,
       refreshToken: newTokens.refreshToken,
@@ -275,6 +300,12 @@ export class AuthService {
       role: user.role,
       isActive: user.isActive,
       isVerified: user.isVerified,
+      phone: user.phone,
+      address: user.address,
+      city: user.city,
+      state: user.state,
+      country: user.country,
+      postalCode: user.postalCode,
       createdAt: user.createdAt,
       customerId: user.customerId,
     };

@@ -17,6 +17,12 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   isVerified: boolean;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
   createdAt?: string;
 }
 
@@ -26,7 +32,19 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: UserRole }>;
-  signup: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string; verificationToken?: string }>;
+  signup: (
+    name: string,
+    email: string,
+    password: string,
+    extraData?: {
+      phone?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      postalCode?: string;
+    }
+  ) => Promise<{ success: boolean; error?: string; verificationToken?: string }>;
   verifyEmailToken: (token: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
@@ -79,11 +97,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error: res.error || "Login failed" };
   };
 
-  const signup = async (name: string, email: string, password: string) => {
+  const signup = async (
+    name: string,
+    email: string,
+    password: string,
+    extraData?: {
+      phone?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      postalCode?: string;
+    }
+  ) => {
     setIsLoading(true);
     const res = await apiClient.post<{ user: User; accessToken: string; verificationToken?: string }>(
       "/auth/register",
-      { name, email, password }
+      { name, email, password, ...extraData }
     );
 
     if (res.data && res.data.accessToken) {

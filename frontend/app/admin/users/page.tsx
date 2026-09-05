@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import AppLayout from "@/components/layout/AppLayout";
 import PageHeader from "@/components/layout/PageHeader";
 import { DataTable, StatusBadge, Column } from "@/components/ui/DataTable";
@@ -12,11 +13,11 @@ import {
   Edit2,
   Power,
   X,
-  Check,
   Loader2,
   AlertCircle,
   CheckCircle2,
   Filter,
+  Eye,
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 
@@ -34,6 +35,12 @@ export interface TeamUser {
   role: UserRole;
   isActive: boolean;
   isVerified: boolean;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -47,29 +54,12 @@ const ROLES_LIST: UserRole[] = [
 ];
 
 export default function TeamAndRolesPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<TeamUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
 
-  // Modal State
-  const [editingUser, setEditingUser] = useState<TeamUser | null>(null);
-  const [editForm, setEditForm] = useState<{
-    name: string;
-    email: string;
-    role: UserRole;
-    isActive: boolean;
-    isVerified: boolean;
-  }>({
-    name: "",
-    email: "",
-    role: "SALES_REP",
-    isActive: true,
-    isVerified: false,
-  });
-
-  // Action State
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -134,42 +124,6 @@ export default function TeamAndRolesPage() {
     }
   };
 
-  const openEditModal = (user: TeamUser) => {
-    setEditingUser(user);
-    setEditForm({
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      isActive: user.isActive,
-      isVerified: user.isVerified,
-    });
-  };
-
-  const handleSaveUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingUser) return;
-
-    setIsSubmitting(true);
-    const res = await apiClient.patch<TeamUser>(`/users/${editingUser.id}`, {
-      name: editForm.name,
-      email: editForm.email,
-      role: editForm.role,
-      isActive: editForm.isActive,
-      isVerified: editForm.isVerified,
-    });
-
-    if (res.data) {
-      setUsers((prev) =>
-        prev.map((u) => (u.id === editingUser.id ? res.data! : u))
-      );
-      setEditingUser(null);
-      showToast("success", "User profile updated successfully!");
-    } else {
-      showToast("error", res.error || "Failed to update user details.");
-    }
-    setIsSubmitting(false);
-  };
-
   // Filter users by search and role
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
@@ -179,10 +133,6 @@ export default function TeamAndRolesPage() {
     const matchesRole = roleFilter === "ALL" || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
-
-  // Calculate statistics
-  const activeCount = users.filter((u) => u.isActive).length;
-  const adminCount = users.filter((u) => u.role === "ADMIN").length;
 
   const columns: Column<TeamUser>[] = [
     {
@@ -221,7 +171,7 @@ export default function TeamAndRolesPage() {
     {
       header: "Role",
       render: (row) => (
-        <div className="relative inline-block">
+        <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
           <select
             value={row.role}
             onChange={(e) =>
@@ -268,12 +218,20 @@ export default function TeamAndRolesPage() {
       header: "Actions",
       align: "right",
       render: (row) => (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
-            onClick={() => openEditModal(row)}
+            onClick={() => router.push(`/admin/users/${row.id}`)}
             className="p-1.5 rounded-lg text-slate-500 hover:text-[#0D69B2] hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
-            title="Edit User Details"
+            title="View User Details"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push(`/admin/users/${row.id}/edit`)}
+            className="p-1.5 rounded-lg text-slate-500 hover:text-[#F4882E] hover:bg-orange-50 dark:hover:bg-slate-800 transition-colors"
+            title="Edit User Details (Full Page)"
           >
             <Edit2 className="w-4 h-4" />
           </button>
@@ -348,10 +306,10 @@ export default function TeamAndRolesPage() {
           </div>
           <div>
             <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              Active Users
+              Active Accounts
             </div>
             <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              {activeCount}
+              {users.filter((u) => u.isActive).length}
             </div>
           </div>
         </div>
@@ -362,30 +320,30 @@ export default function TeamAndRolesPage() {
           </div>
           <div>
             <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              System Administrators
+              Administrators
             </div>
             <div className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              {adminCount}
+              {users.filter((u) => u.role === "ADMIN").length}
             </div>
           </div>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
+            placeholder="Search member name or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, email or role..."
-            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0D69B2]"
+            className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D69B2]"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <Filter className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <Filter className="w-4 h-4 text-slate-400 hidden sm:block" />
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
@@ -409,159 +367,13 @@ export default function TeamAndRolesPage() {
             <p className="text-sm text-slate-500">Loading team members...</p>
           </div>
         ) : (
-          <DataTable columns={columns} data={filteredUsers} />
+          <DataTable
+            columns={columns}
+            data={filteredUsers}
+            onRowClick={(row) => router.push(`/admin/users/${row.id}`)}
+          />
         )}
       </div>
-
-      {/* Edit User Modal */}
-      {editingUser && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                Edit Team Member
-              </h3>
-              <button
-                onClick={() => setEditingUser(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveUser} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, name: e.target.value })
-                  }
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D69B2]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={editForm.email}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, email: e.target.value })
-                  }
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D69B2]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                  Assigned Enterprise Role
-                </label>
-                <select
-                  value={editForm.role}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      role: e.target.value as UserRole,
-                    })
-                  }
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D69B2]"
-                >
-                  {ROLES_LIST.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center justify-between py-2 border-t border-slate-100 dark:border-slate-800 pt-3">
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 block">
-                    Account Status
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    {editForm.isActive ? "User can log in and access system" : "User login access is disabled"}
-                  </span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.isActive}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, isActive: e.target.checked })
-                    }
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-[#0D69B2]"></div>
-                  <span className="ml-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {editForm.isActive ? "Active" : "Inactive"}
-                  </span>
-                </label>
-              </div>
-
-              <div className="flex items-center justify-between py-2 border-t border-slate-100 dark:border-slate-800 pt-2">
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 block">
-                    Email Verification
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    {editForm.isVerified ? "Email is confirmed" : "Pending email verification"}
-                  </span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.isVerified}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, isVerified: e.target.checked })
-                    }
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
-                  <span className="ml-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {editForm.isVerified ? "Verified" : "Pending"}
-                  </span>
-                </label>
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setEditingUser(null)}
-                  className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-[#0D69B2] hover:bg-[#0b5a99] text-white shadow-md transition-all flex items-center gap-2 disabled:opacity-70"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>Save Changes</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </AppLayout>
   );
 }

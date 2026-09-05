@@ -254,7 +254,15 @@ export default function ApprovalQueueView({
           </div>
         )}
 
-        <DataTable columns={columns} data={requests} />
+        <DataTable
+          columns={columns}
+          data={requests}
+          onRowClick={(row) => {
+            if (row.status === "PENDING") {
+              setActiveModal({ request: row, action: "APPROVE" });
+            }
+          }}
+        />
       </div>
 
       {/* Approve / Reject Modal */}

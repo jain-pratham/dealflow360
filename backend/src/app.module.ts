@@ -15,6 +15,9 @@ import { ApprovalsModule } from './approvals/approvals.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { CustomerPortalModule } from './customer-portal/customer-portal.module';
 import { FulfillmentModule } from './fulfillment/fulfillment.module';
+import { BillingModule } from './billing/billing.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -34,6 +37,9 @@ import { FulfillmentModule } from './fulfillment/fulfillment.module';
     RecommendationsModule,
     CustomerPortalModule,
     FulfillmentModule,
+    BillingModule,
+    SubscriptionsModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

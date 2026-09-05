@@ -114,30 +114,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 sm:p-6 font-sans">
-      {/* Background Slider */}
-      <AuthBackgroundSlider />
+    <div className="relative min-h-screen flex items-center justify-center p-4 sm:p-6 font-sans bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100">
 
       {/* Main Card Container */}
-      <div className="relative z-10 w-full max-w-[430px] bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-7 sm:p-9 transition-all duration-300">
+      <div className="relative z-10 w-full max-w-[430px] bg-white rounded-2xl border border-slate-200 shadow-xl p-7 sm:p-9 transition-all duration-300">
         {viewState === "login" ? (
           /* STANDARD LOGIN VIEW */
           <div>
             {/* Header */}
             <div className="flex flex-col items-center text-center mb-7">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#007FFF] to-blue-400 p-0.5 shadow-md shadow-blue-500/20 mb-3 flex items-center justify-center">
+              <div className="mb-3.5 flex items-center justify-center">
                 <img
-                  src="/img.png"
+                  src="/logo.png"
                   alt="Logo"
-                  className="w-full h-full object-cover rounded-2xl"
-                  onError={(e) => {
-                    // Fallback visual if img.png is not found
-                    (e.target as HTMLElement).style.display = "none";
-                  }}
+                  className="h-12 sm:h-14 w-auto max-w-[240px] object-contain"
                 />
-                <span className="text-white text-xl font-extrabold tracking-tight">
-                  DF
-                </span>
               </div>
               <h1 className="text-2xl sm:text-[26px] font-bold text-slate-900 tracking-tight">
                 Welcome Back

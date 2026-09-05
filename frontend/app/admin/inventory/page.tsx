@@ -326,7 +326,7 @@ export default function AdminInventoryPage() {
         {loading ? (
           <div className="p-12 text-center text-slate-400 font-medium">Loading inventory records...</div>
         ) : (
-          <DataTable columns={columns} data={inventory} />
+          <DataTable columns={columns} data={inventory} onRowClick={(row) => handleOpenModal(row)} />
         )}
       </div>
 
