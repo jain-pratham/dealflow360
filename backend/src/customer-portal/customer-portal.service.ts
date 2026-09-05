@@ -401,10 +401,30 @@ export class CustomerPortalService {
         },
       });
 
+      let activeApprovalChainId: string | null = null;
+      if (requiresApproval) {
+        const activeChain = await tx.approvalChain.findFirst({
+          where: {
+            requiredRole,
+            isActive: true,
+          },
+          orderBy: { sequence: 'asc' },
+        });
+
+        if (!activeChain) {
+          throw new BadRequestException(
+            `No active approval chain configured for the required approval role: ${requiredRole}`,
+          );
+        }
+
+        activeApprovalChainId = activeChain.id;
+      }
+
       if (requiresApproval) {
         await tx.approvalRequest.create({
           data: {
             quotationId,
+            approvalChainId: activeApprovalChainId,
             requiredRole,
             requestedDiscount: maxRequestedDiscount,
             status: ApprovalStatus.PENDING,

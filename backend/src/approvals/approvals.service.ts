@@ -23,6 +23,7 @@ export class ApprovalsService {
     return {
       id: ar.id,
       quotationId: ar.quotationId,
+      approvalChainId: ar.approvalChainId,
       requiredRole: ar.requiredRole,
       requestedDiscount: ar.requestedDiscount ? Number(ar.requestedDiscount) : undefined,
       status: ar.status,

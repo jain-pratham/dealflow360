@@ -391,9 +391,26 @@ model QuotationLine {
 // APPROVAL WORKFLOW ENGINE
 // -----------------------------------------------------------------------------
 
+model ApprovalChain {
+  id           String               @id @default(uuid()) @db.Uuid
+  name         String
+  description  String?
+  requiredRole ApprovalRoleRequired
+  sequence     Int                  @default(1)
+  isActive     Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt @default(now())
+
+  // Relationships
+  approvalRequests ApprovalRequest[]
+
+  @@map("approval_chains")
+}
+
 model ApprovalRequest {
   id                String               @id @default(uuid()) @db.Uuid
   quotationId       String               @db.Uuid
+  approvalChainId   String?              @db.Uuid
   requiredRole      ApprovalRoleRequired
   requestedDiscount Decimal?             @db.Decimal(5, 2)
   status            ApprovalStatus       @default(PENDING)
@@ -403,8 +420,9 @@ model ApprovalRequest {
   evaluatedAt       DateTime             @updatedAt
 
   // Relationships
-  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  reviewer  User?     @relation("ReviewerApprovals", fields: [reviewerId], references: [id])
+  quotation     Quotation      @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  approvalChain ApprovalChain? @relation(fields: [approvalChainId], references: [id], onDelete: SetNull)
+  reviewer      User?          @relation("ReviewerApprovals", fields: [reviewerId], references: [id])
 
   @@map("approval_requests")
 }

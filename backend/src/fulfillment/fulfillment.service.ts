@@ -36,7 +36,7 @@ export class FulfillmentService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.seedDefaultWarehousesAndInventory();
+    // Auto-seeding disabled to honor database clean resets.
   }
 
   /**
@@ -155,6 +155,12 @@ export class FulfillmentService implements OnModuleInit {
     const warehouses = await this.prisma.warehouse.findMany({
       where: { isActive: true },
     });
+
+    if (warehouses.length === 0) {
+      throw new BadRequestException(
+        'No active warehouse hub configured. Please configure at least one active warehouse in Admin -> Multi-Warehouse Setup before processing fulfillment.',
+      );
+    }
 
     const formattedWarehouses = warehouses.map((w) => ({
       ...w,
@@ -361,7 +367,7 @@ export class FulfillmentService implements OnModuleInit {
             data: {
               quotationId: quotation.id,
               quotationLineId: lineRes.lineId,
-              warehouseId: warehouses[0]?.id || quotation.id,
+              warehouseId: warehouses[0].id,
               productId: lineRes.productId,
               allocatedQuantity: 0,
               fulfilledQuantity: 0,

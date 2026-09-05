@@ -257,11 +257,11 @@ export default function LoginPage() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Signing In...</span>
+                    <span>Logging In...</span>
                   </>
                 ) : (
                   <>
-                    <span>Sign In</span>
+                    <span>Log In</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

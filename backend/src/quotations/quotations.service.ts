@@ -124,6 +124,7 @@ export class QuotationsService {
       approvalRequests: q.approvalRequests
         ? q.approvalRequests.map((ar: any) => ({
             id: ar.id,
+            approvalChainId: ar.approvalChainId,
             requiredRole: ar.requiredRole,
             requestedDiscount: ar.requestedDiscount ? Number(ar.requestedDiscount) : undefined,
             status: ar.status,
@@ -573,12 +574,32 @@ export class QuotationsService {
       }
     }
 
+    let activeApprovalChainId: string | null = null;
+    if (requiresApproval) {
+      const activeChain = await this.prisma.approvalChain.findFirst({
+        where: {
+          requiredRole,
+          isActive: true,
+        },
+        orderBy: { sequence: 'asc' },
+      });
+
+      if (!activeChain) {
+        throw new BadRequestException(
+          `No active approval chain configured for the required approval role: ${requiredRole}`,
+        );
+      }
+
+      activeApprovalChainId = activeChain.id;
+    }
+
     const updatedQuotation = await this.prisma.$transaction(async (tx) => {
       if (requiresApproval) {
         // Create Approval Request
         const approvalRequest = await tx.approvalRequest.create({
           data: {
             quotationId: quotation.id,
+            approvalChainId: activeApprovalChainId,
             requiredRole,
             requestedDiscount: maxRequestedDiscount,
             status: ApprovalStatus.PENDING,

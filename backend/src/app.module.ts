@@ -19,6 +19,7 @@ import { BillingModule } from './billing/billing.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DealHealthModule } from './deal-health/deal-health.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { DealHealthModule } from './deal-health/deal-health.module';
     SubscriptionsModule,
     PaymentsModule,
     DealHealthModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -158,6 +158,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           href: "/sales/deal-health",
           icon: React.createElement(HeartPulse, { size: 18 }),
         },
+        {
+          title: "Reports",
+          href: "/sales/reports",
+          icon: React.createElement(FileText, { size: 18 }),
+        },
       ];
 
     case "SALES_MANAGER":
