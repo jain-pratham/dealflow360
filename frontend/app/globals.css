@@ -1,26 +1,107 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --primary: #0D69B2;
+  --primary-hover: #0b5a99;
+  --primary-light: rgba(13, 105, 178, 0.08);
+  --accent: #EC2091;
+  --secondary: #F4882E;
+  --secondary-hover: #e07722;
+  --sidebar-bg: #0B2545;
+  
+  --background: #F1F5F9;
+  --foreground: #0F172A;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --border: #E2E8F0;
+  --muted: #64748B;
+  --muted-foreground: #475569;
+}
+
+html.dark {
+  --sidebar-bg: #111318;
+  --background: #020617;
+  --foreground: #F8FAFC;
+  --card: #0F172A;
+  --card-foreground: #F8FAFC;
+  --border: #1E293B;
+  --muted: #94A3B8;
+  --muted-foreground: #64748B;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-primary-brand: #0D69B2;
+  --color-primary-brand-hover: #0b5a99;
+  --color-accent-pink: #EC2091;
+  --color-secondary-orange: #F4882E;
+  --color-sidebar-navy: #0B2545;
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
+
+/* Custom Utilities */
+.glass-header {
+  background: rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html.dark .glass-header {
+  background: rgba(15, 23, 42, 0.90);
+}
+
+.pulsing-dot {
+  position: relative;
+  display: inline-flex;
+  height: 8px;
+  width: 8px;
+  border-radius: 9999px;
+  background-color: #0D69B2;
+}
+
+.pulsing-dot::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 9999px;
+  background-color: #0D69B2;
+  opacity: 0.75;
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
