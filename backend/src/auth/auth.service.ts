@@ -15,6 +15,7 @@ import { MailService } from '../mail/mail.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ActivateCustomerDto } from './dto/activate-customer.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -308,6 +309,58 @@ export class AuthService {
       postalCode: user.postalCode,
       createdAt: user.createdAt,
       customerId: user.customerId,
+    };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    let passwordHash: string | undefined = undefined;
+    if (dto.newPassword) {
+      if (!dto.currentPassword) {
+        throw new BadRequestException('Current password is required to set a new password');
+      }
+      const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+      if (!isPasswordValid) {
+        throw new BadRequestException('Current password is incorrect');
+      }
+      passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.phone !== undefined && { phone: dto.phone }),
+        ...(dto.address !== undefined && { address: dto.address }),
+        ...(dto.city !== undefined && { city: dto.city }),
+        ...(dto.state !== undefined && { state: dto.state }),
+        ...(dto.country !== undefined && { country: dto.country }),
+        ...(dto.postalCode !== undefined && { postalCode: dto.postalCode }),
+        ...(passwordHash !== undefined && { passwordHash }),
+      },
+    });
+
+    return {
+      message: 'Profile updated successfully',
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        phone: updatedUser.phone,
+        address: updatedUser.address,
+        city: updatedUser.city,
+        state: updatedUser.state,
+        country: updatedUser.country,
+        postalCode: updatedUser.postalCode,
+      },
     };
   }
 

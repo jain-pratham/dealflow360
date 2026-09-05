@@ -215,42 +215,6 @@ export default function TeamAndRolesPage() {
         </span>
       ),
     },
-    {
-      header: "Actions",
-      align: "right",
-      render: (row) => (
-        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={() => router.push(`/admin/users/${row.id}`)}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-[#0D69B2] hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
-            title="View User Details"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push(`/admin/users/${row.id}/edit`)}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-[#F4882E] hover:bg-orange-50 dark:hover:bg-slate-800 transition-colors"
-            title="Edit User Details (Full Page)"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleToggleStatus(row)}
-            className={`p-1.5 rounded-lg transition-colors ${
-              row.isActive
-                ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-            }`}
-            title={row.isActive ? "Deactivate User" : "Activate User"}
-          >
-            <Power className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
   ];
 
   return (
@@ -371,7 +335,16 @@ export default function TeamAndRolesPage() {
           <DataTable
             columns={columns}
             data={filteredUsers}
-            onRowClick={(row) => router.push(`/admin/users/${row.id}`)}
+            onView={(row) => router.push(`/admin/users/${row.id}`)}
+            onEdit={(row) => router.push(`/admin/users/${row.id}/edit`)}
+            customActions={(row) => [
+              {
+                label: row.isActive ? "Deactivate User" : "Activate User",
+                icon: <Power size={14} className={row.isActive ? "text-rose-500" : "text-emerald-500"} />,
+                onClick: (r) => handleToggleStatus(r),
+                variant: row.isActive ? "danger" : "primary",
+              },
+            ]}
           />
         )}
       </div>

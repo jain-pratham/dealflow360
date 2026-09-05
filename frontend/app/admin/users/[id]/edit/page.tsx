@@ -171,54 +171,53 @@ export default function EditUserPage() {
         </div>
       )}
 
-      {/* Navigation Breadcrumb Bar */}
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/admin/users/${userId}`}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-2xs"
-          >
-            <ArrowLeft size={16} className="text-[#0D69B2]" />
-            <span>Back to User View</span>
-          </Link>
+      {/* Centered Main Container */}
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* Navigation Breadcrumb Bar */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/admin/users/${userId}`}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-2xs"
+            >
+              <ArrowLeft size={16} className="text-[#0D69B2]" />
+              <span>Back to User View</span>
+            </Link>
 
-          <div className="hidden md:flex items-center gap-2 text-xs text-slate-400">
-            <span>Admin</span>
-            <ChevronRight size={12} />
-            <span>Users</span>
-            <ChevronRight size={12} />
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              Edit User
-            </span>
+            <div className="hidden md:flex items-center gap-2 text-xs text-slate-400">
+              <span>Admin</span>
+              <ChevronRight size={12} />
+              <span>Users</span>
+              <ChevronRight size={12} />
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                Edit User
+              </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {loading ? (
-        <div className="py-20 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <Loader2 className="w-8 h-8 animate-spin text-[#0D69B2] mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-500">
-            Loading user profile editor...
-          </p>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl">
+        {loading ? (
+          <div className="py-20 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+            <Loader2 className="w-8 h-8 animate-spin text-[#0D69B2] mx-auto mb-3" />
+            <p className="text-sm font-medium text-slate-500">
+              Loading user profile editor...
+            </p>
+          </div>
+        ) : (
+          <form noValidate onSubmit={handleSubmit} className="space-y-6">
           {/* Main 2-Column Responsive Form Layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* CARD 1: PERSONAL & ACCOUNT PROFILE */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
-              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="p-2 bg-blue-50 dark:bg-blue-950/50 text-[#0D69B2] rounded-lg">
-                  <User size={18} />
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="w-7 h-7 rounded-full bg-[#0D69B2] text-white flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0">
+                  1
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                    Identity & Profile
+                    Identity & Account Profile
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Basic account identification fields
-                  </p>
                 </div>
               </div>
 
@@ -330,17 +329,14 @@ export default function EditUserPage() {
 
             {/* CARD 3: POSTAL ADDRESS & LOCATION (FULL WIDTH SPAN) */}
             <div className="md:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
-              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="p-2 bg-amber-50 dark:bg-amber-950/50 text-amber-600 rounded-lg">
-                  <MapPin size={18} />
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="w-7 h-7 rounded-full bg-[#0D69B2] text-white flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0">
+                  2
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                    Postal Address & Location
+                    Postal Address & Location Details
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Full billing and physical office address details
-                  </p>
                 </div>
               </div>
 
@@ -529,6 +525,7 @@ export default function EditUserPage() {
           </div>
         </form>
       )}
+      </div>
     </AppLayout>
   );
 }

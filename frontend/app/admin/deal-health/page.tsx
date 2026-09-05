@@ -151,15 +151,15 @@ export default function AdminDealHealthPage() {
           {/* Hero row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Portfolio health score */}
-            <div className="relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-indigo-600 to-violet-700 text-white shadow-lg col-span-1">
+            <div className="relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-[#0D69B2] via-blue-600 to-[#0B2545] text-white shadow-lg shadow-blue-900/20 col-span-1">
               <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 -translate-y-16 translate-x-16" />
               <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-white/5 translate-y-10 -translate-x-10" />
               <div className="flex items-center gap-2 mb-4">
-                <Shield size={16} className="opacity-80" />
-                <span className="text-sm font-semibold opacity-80">Portfolio Health</span>
+                <Shield size={16} className="opacity-80 text-blue-200" />
+                <span className="text-sm font-semibold opacity-90">Portfolio Health</span>
               </div>
               <div className="text-6xl font-black mb-1">{healthScore}%</div>
-              <p className="text-sm opacity-70">{metrics.healthyDeals} of {metrics.totalDeals} deals healthy</p>
+              <p className="text-sm opacity-80">{metrics.healthyDeals} of {metrics.totalDeals} deals healthy</p>
               <div className="mt-4 h-2 rounded-full bg-white/20">
                 <div
                   className="h-full rounded-full bg-white transition-all duration-700"
@@ -171,7 +171,7 @@ export default function AdminDealHealthPage() {
             {/* Stat grid */}
             <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: "Total Deals", value: metrics.totalDeals, icon: BarChart3, color: "text-indigo-500 bg-indigo-500/10" },
+                { label: "Total Deals", value: metrics.totalDeals, icon: BarChart3, color: "text-blue-600 bg-blue-500/10 dark:text-blue-400" },
                 { label: "Healthy", value: metrics.healthyDeals, icon: CheckCircle2, color: "text-emerald-500 bg-emerald-500/10" },
                 { label: "At Risk", value: metrics.atRiskDeals, icon: TrendingDown, color: "text-amber-500 bg-amber-500/10" },
                 { label: "Critical", value: metrics.criticalDeals, icon: AlertTriangle, color: "text-red-500 bg-red-500/10" },
@@ -203,7 +203,7 @@ export default function AdminDealHealthPage() {
                       <div key={type} className="flex items-center gap-3">
                         <div className="text-xs text-slate-500 w-40 shrink-0 font-medium truncate">{type.replace(/_/g, " ")}</div>
                         <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                          <div className="h-full bg-blue-600 dark:bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                         </div>
                         <div className="text-xs font-bold text-slate-900 dark:text-white w-5 text-right">{count}</div>
                       </div>

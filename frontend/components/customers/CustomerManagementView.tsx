@@ -246,7 +246,18 @@ export default function CustomerManagementView() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      setTimeout(() => {
+        const errorEl = (e.target as HTMLElement).querySelector(".border-red-500, .text-red-500, p.text-rose-500, input.border-rose-500");
+        if (errorEl) {
+          errorEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          if (errorEl instanceof HTMLInputElement || errorEl instanceof HTMLSelectElement) {
+            errorEl.focus({ preventScroll: true });
+          }
+        }
+      }, 50);
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -742,15 +753,15 @@ export default function CustomerManagementView() {
 
           {/* Form Main Container */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 sm:p-8">
-            <form onSubmit={handleFormSubmit} className="space-y-8 max-w-4xl mx-auto">
+            <form noValidate onSubmit={handleFormSubmit} className="space-y-8 max-w-4xl mx-auto">
               {/* SECTION 1: COMPANY INFORMATION */}
               <div className="space-y-4">
-                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-[#0D69B2] flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950 text-[#0D69B2] inline-flex items-center justify-center text-xs">
-                      1
-                    </span>
-                    <span>Company Information</span>
+                <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <div className="w-7 h-7 rounded-full bg-[#0D69B2] text-white flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0">
+                    1
+                  </div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+                    Basic Company Information
                   </h3>
                 </div>
 
@@ -880,12 +891,12 @@ export default function CustomerManagementView() {
 
               {/* SECTION 3: ADDRESS */}
               <div className="space-y-4">
-                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-[#0D69B2] flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950 text-[#0D69B2] inline-flex items-center justify-center text-xs">
-                      3
-                    </span>
-                    <span>Address Information</span>
+                <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <div className="w-7 h-7 rounded-full bg-[#0D69B2] text-white flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0">
+                    2
+                  </div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+                    Location & Address Details
                   </h3>
                 </div>
 

@@ -16,6 +16,7 @@ import {
   FileText,
   Settings,
   LogOut,
+  User,
   Layers,
   BarChart3,
   Boxes,
@@ -36,6 +37,17 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
   const navItems: NavItem[] = getMenuItemsForRole(role);
+
+  const profileHref =
+    role === "ADMIN"
+      ? "/admin/profile"
+      : role === "SALES_MANAGER"
+      ? "/manager/profile"
+      : role === "SALES_REP"
+      ? "/sales/profile"
+      : role === "FINANCE"
+      ? "/finance/profile"
+      : "/portal/profile";
 
   // Accordion behavior: auto-open the submenu containing the active route
   useEffect(() => {
@@ -66,30 +78,17 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
       {/* Brand Header & Toggle */}
       <div className="relative flex items-center h-16 px-4 border-b border-white/10 justify-between">
         {!collapsed ? (
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="bg-white/95 px-2.5 py-1 rounded-xl shadow-md flex items-center justify-center shrink-0 border border-white/20">
-              <img
-                src="/logo.png"
-                alt="Logo"
-                className="h-7 w-auto max-w-[120px] object-contain"
-              />
-            </div>
-            <div className="flex flex-col truncate">
-              <span className="font-extrabold text-sm tracking-wide text-white leading-tight">
-                DEALFLOW<span className="text-[#F4882E]">360</span>
-              </span>
-              <span className="text-[10px] text-slate-300 font-medium tracking-wider uppercase">
-                Enterprise CRM
-              </span>
-            </div>
+          <div className="flex flex-col truncate pl-1">
+            <span className="font-extrabold text-base tracking-wide text-white leading-tight">
+              DEALFLOW<span className="text-[#F4882E]">360</span>
+            </span>
+            <span className="text-[10px] text-slate-300 font-medium tracking-wider uppercase">
+              Enterprise CRM
+            </span>
           </div>
         ) : (
-          <div className="mx-auto bg-white/95 p-1 px-1.5 rounded-xl shadow-md flex items-center justify-center border border-white/20">
-            <img
-              src="/logo.png"
-              alt="Logo"
-              className="h-6 w-auto max-w-[32px] object-contain"
-            />
+          <div className="mx-auto flex items-center justify-center font-black text-sm text-[#F4882E]">
+            DF
           </div>
         )}
 
@@ -204,40 +203,47 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         )}
       </div>
 
-      {/* User Footer Profile & Logout */}
+      {/* User Footer Profile & Logout Buttons */}
       <div className="p-3 border-t border-white/10 bg-black/20">
         {!collapsed ? (
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-full bg-[#0D69B2] flex items-center justify-center font-bold text-xs text-white uppercase border border-white/20 shrink-0">
-                {user?.email?.slice(0, 2) || "DF"}
-              </div>
-              <div className="flex flex-col truncate">
-                <span className="text-xs font-bold text-white truncate">
-                  {getRoleDisplayName(user?.role)}
-                </span>
-                <span className="text-[10px] text-slate-400 truncate">
-                  {user?.email || "admin@dealflow360.com"}
-                </span>
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            {/* Profile Button */}
+            <Link
+              href={profileHref}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/10 transition-all cursor-pointer truncate active:scale-95"
+              title="View Profile"
+            >
+              <User size={15} className="text-[#F4882E]" />
+              <span>Profile</span>
+            </Link>
 
+            {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="p-2 rounded-xl bg-[#EF4444] hover:bg-red-600 text-white shadow-md shadow-red-500/30 transition-all active:scale-95 cursor-pointer shrink-0"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#EF4444] hover:bg-red-600 text-white text-xs font-semibold shadow-md shadow-red-500/20 transition-all active:scale-95 cursor-pointer"
               title="Logout"
             >
-              <LogOut size={15} />
+              <LogOut size={14} />
+              <span>Logout</span>
             </button>
           </div>
         ) : (
-          <button
-            onClick={handleLogout}
-            className="w-full p-2 rounded-xl bg-[#EF4444] hover:bg-red-600 text-white shadow-md shadow-red-500/30 flex items-center justify-center transition-all"
-            title="Logout"
-          >
-            <LogOut size={16} />
-          </button>
+          <div className="flex flex-col gap-2">
+            <Link
+              href={profileHref}
+              className="w-full p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center border border-white/10 transition-all active:scale-95"
+              title="View Profile"
+            >
+              <User size={16} className="text-[#F4882E]" />
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="w-full p-2.5 rounded-xl bg-[#EF4444] hover:bg-red-600 text-white shadow-md shadow-red-500/20 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+              title="Logout"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         )}
       </div>
     </aside>

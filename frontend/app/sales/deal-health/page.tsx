@@ -130,7 +130,7 @@ export default function SalesDealHealthPage() {
           {metrics && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: "My Deals", value: metrics.totalDeals, color: "from-indigo-500 to-violet-500", icon: HeartPulse },
+                { label: "My Deals", value: metrics.totalDeals, color: "from-blue-600 to-[#0D69B2]", icon: HeartPulse },
                 { label: "Healthy", value: metrics.healthyDeals, color: "from-emerald-500 to-teal-500", icon: CheckCircle2 },
                 { label: "At Risk", value: metrics.atRiskDeals, color: "from-amber-500 to-orange-500", icon: TrendingDown },
                 { label: "Critical", value: metrics.criticalDeals, color: "from-red-500 to-rose-600", icon: AlertTriangle },
@@ -161,7 +161,7 @@ export default function SalesDealHealthPage() {
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500 text-white">{alerts.length}</span>
                   )}
                 </div>
-                <button onClick={fetchData} className="text-slate-400 hover:text-indigo-500 transition-colors">
+                <button onClick={fetchData} className="text-slate-400 hover:text-blue-600 transition-colors">
                   <RefreshCw size={14} />
                 </button>
               </div>

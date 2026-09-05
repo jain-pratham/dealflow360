@@ -127,7 +127,7 @@ function ActivateContent() {
             <p className="text-xs text-slate-300">Redirecting to your customer quotations portal...</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form noValidate onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
                 Registered Email

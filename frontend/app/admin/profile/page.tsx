@@ -2,6 +2,6 @@
 
 import UserProfileView from "@/components/profile/UserProfileView";
 
-export default function PortalProfilePage() {
+export default function AdminProfilePage() {
   return <UserProfileView />;
 }

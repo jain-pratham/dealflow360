@@ -68,6 +68,17 @@ export default function Header({
   const userName = user?.name || user?.email?.split("@")[0] || "User";
   const userRoleText = getRoleDisplayName(user?.role);
 
+  const profileHref =
+    user?.role === "ADMIN"
+      ? "/admin/profile"
+      : user?.role === "SALES_MANAGER"
+      ? "/manager/profile"
+      : user?.role === "SALES_REP"
+      ? "/sales/profile"
+      : user?.role === "FINANCE"
+      ? "/finance/profile"
+      : "/portal/profile";
+
   const initials = user?.name
     ? user.name
         .trim()
@@ -194,7 +205,7 @@ export default function Header({
               {/* Menu Actions */}
               <div className="pt-0.5">
                 <Link
-                  href="/portal/profile"
+                  href={profileHref}
                   onClick={() => setDropdownOpen(false)}
                   className="flex items-center gap-2 w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                 >

@@ -143,7 +143,7 @@ export default function ManagerDealHealthPage() {
           {metrics && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {[
-                { label: "Total Deals", value: metrics.totalDeals, cls: "from-indigo-500 to-violet-600" },
+                { label: "Total Deals", value: metrics.totalDeals, cls: "from-blue-600 to-[#0D69B2]" },
                 { label: "Healthy", value: metrics.healthyDeals, cls: "from-emerald-500 to-teal-500" },
                 { label: "At Risk", value: metrics.atRiskDeals, cls: "from-amber-400 to-orange-500" },
                 { label: "Critical", value: metrics.criticalDeals, cls: "from-red-500 to-rose-600" },
@@ -172,7 +172,7 @@ export default function ManagerDealHealthPage() {
                 {Object.entries(metrics.alertsByType).map(([type, count]) => (
                   <div key={type} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300">
                     <span>{type.replace(/_/g, " ")}</span>
-                    <span className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-black">{count}</span>
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black">{count}</span>
                   </div>
                 ))}
               </div>
@@ -191,7 +191,7 @@ export default function ManagerDealHealthPage() {
                       <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500 text-white">{alerts.length}</span>
                     )}
                   </div>
-                  <button onClick={fetchData} className="text-slate-400 hover:text-indigo-500 transition-colors">
+                  <button onClick={fetchData} className="text-slate-400 hover:text-blue-600 transition-colors">
                     <RefreshCw size={14} />
                   </button>
                 </div>
