@@ -723,12 +723,12 @@ export class QuotationsService {
       });
     });
 
-    // Notify Reviewers of Pending Approval & User feedback
+    // Notify Reviewers (Target Role + ADMIN) of Pending Approval
     if (requiresApproval && requiredRole) {
       const targetRole = requiredRole === 'FINANCE' ? UserRole.FINANCE : UserRole.SALES_MANAGER;
       this.prisma.user.findMany({
-        where: { role: targetRole, isActive: true },
-        select: { id: true },
+        where: { role: { in: [targetRole, UserRole.ADMIN] }, isActive: true },
+        select: { id: true, role: true },
       }).then((reviewers) => {
         const reviewerIds = reviewers.map((r) => r.id);
         if (reviewerIds.length > 0) {
@@ -758,7 +758,7 @@ export class QuotationsService {
         metadata: { url: `/sales/quotations` },
       }).catch(() => {});
     } else {
-      // Auto-approved notification
+      // Auto-approved notification for Sales Rep
       this.notificationsService.createNotification({
         userId: currentUser.id,
         type: NotificationType.APPROVAL_APPROVED,
@@ -769,6 +769,18 @@ export class QuotationsService {
         priority: NotificationPriority.NORMAL,
         deduplicationKey: `QUOTATION_AUTO_APPROVED_${quotation.id}`,
         metadata: { url: `/sales/quotations` },
+      }).catch(() => {});
+
+      // Notify Admins of Auto-Approval
+      this.notificationsService.notifyAdmins({
+        type: NotificationType.APPROVAL_APPROVED,
+        title: `Quotation Auto-Approved: ${quotation.quoteNumber}`,
+        message: `Quotation ${quotation.quoteNumber} was auto-approved for customer ${quotation.customer?.name || 'Customer'}.`,
+        entityType: 'QUOTATION',
+        entityId: quotation.id,
+        priority: NotificationPriority.NORMAL,
+        deduplicationKey: `QUOTATION_AUTO_APPROVED_ADMIN_${quotation.id}`,
+        metadata: { url: `/admin/approval-chains` },
       }).catch(() => {});
     }
 

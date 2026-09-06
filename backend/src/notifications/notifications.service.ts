@@ -1,11 +1,13 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional, Inject } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { NotificationsGateway } from './notifications.gateway';
 import { WebPushService } from './web-push.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { QueryNotificationsDto } from './dto/query-notifications.dto';
-import { NotificationPriority, NotificationType } from '@prisma/client';
+import { NotificationPriority, NotificationType, UserRole } from '@prisma/client';
 
 @Injectable()
 export class NotificationsService {
@@ -16,18 +18,23 @@ export class NotificationsService {
     private readonly mailService: MailService,
     private readonly gateway: NotificationsGateway,
     private readonly webPushService: WebPushService,
+    @Optional() @InjectQueue('notifications-queue') private readonly notificationsQueue?: Queue,
   ) {}
 
   async createNotification(dto: CreateNotificationDto) {
     const priority = dto.priority || NotificationPriority.NORMAL;
 
-    // Deduplication check
-    if (dto.deduplicationKey) {
+    // Deduplication check scoped per recipient userId to ensure multi-recipient saves work reliably
+    const effectiveDedupKey = dto.deduplicationKey
+      ? (dto.deduplicationKey.endsWith(`_${dto.userId}`) ? dto.deduplicationKey : `${dto.deduplicationKey}_${dto.userId}`)
+      : undefined;
+
+    if (effectiveDedupKey) {
       const existing = await this.prisma.notification.findUnique({
-        where: { deduplicationKey: dto.deduplicationKey },
+        where: { deduplicationKey: effectiveDedupKey },
       });
       if (existing) {
-        this.logger.log(`[DEDUPLICATION] Notification with key '${dto.deduplicationKey}' already exists. Skipping duplicate.`);
+        this.logger.log(`[DEDUPLICATION] Notification with key '${effectiveDedupKey}' already exists for user '${dto.userId}'. Skipping duplicate.`);
         return existing;
       }
     }
@@ -45,13 +52,13 @@ export class NotificationsService {
           entityId: dto.entityId,
           metadata: dto.metadata || {},
           priority,
-          deduplicationKey: dto.deduplicationKey,
+          deduplicationKey: effectiveDedupKey,
         },
       });
     } catch (err: any) {
-      if (err.code === 'P2002' && dto.deduplicationKey) {
-        this.logger.log(`[DEDUPLICATION] Unique constraint match for key '${dto.deduplicationKey}'. Returning existing.`);
-        return this.prisma.notification.findUnique({ where: { deduplicationKey: dto.deduplicationKey } });
+      if (err.code === 'P2002' && effectiveDedupKey) {
+        this.logger.log(`[DEDUPLICATION] Unique constraint match for key '${effectiveDedupKey}'. Returning existing.`);
+        return this.prisma.notification.findUnique({ where: { deduplicationKey: effectiveDedupKey } });
       }
       throw err;
     }
@@ -89,14 +96,27 @@ export class NotificationsService {
         ].includes(dto.type as any));
 
     if (shouldSendPush) {
-      this.webPushService
-        .sendPushNotificationToUser(dto.userId, {
-          title: dto.title,
-          message: dto.message,
-          url: dto.metadata?.url || `/notifications`,
-          tag: `notif-${dto.type}`,
-        })
-        .catch((pushErr) => this.logger.error(`Web Push delivery background error: ${pushErr?.message || pushErr}`));
+      if (this.notificationsQueue) {
+        this.notificationsQueue
+          .add('send-web-push', {
+            type: 'WEB_PUSH',
+            userId: dto.userId,
+            title: dto.title,
+            message: dto.message,
+            url: dto.metadata?.url || `/notifications`,
+            tag: `notif-${dto.type}`,
+          })
+          .catch((err) => this.logger.error(`Failed to enqueue BullMQ push notification: ${err?.message || err}`));
+      } else {
+        this.webPushService
+          .sendPushNotificationToUser(dto.userId, {
+            title: dto.title,
+            message: dto.message,
+            url: dto.metadata?.url || `/notifications`,
+            tag: `notif-${dto.type}`,
+          })
+          .catch((pushErr) => this.logger.error(`Web Push delivery background error: ${pushErr?.message || pushErr}`));
+      }
     }
 
     return notification;
@@ -124,6 +144,10 @@ export class NotificationsService {
     const userIds = users.map((u) => u.id);
     if (userIds.length === 0) return [];
     return this.createNotificationForMultipleUsers(userIds, dto);
+  }
+
+  async notifyAdmins(dto: Omit<CreateNotificationDto, 'userId'>) {
+    return this.notifyRoles([UserRole.ADMIN], dto);
   }
 
   async findUserNotifications(userId: string, query: QueryNotificationsDto) {

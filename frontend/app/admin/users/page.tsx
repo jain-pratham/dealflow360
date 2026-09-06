@@ -75,7 +75,7 @@ export default function TeamAndRolesPage() {
   const fetchUsers = async () => {
     setLoading(true);
     const res = await apiClient.get<TeamUser[]>("/users");
-    if (res.data) {
+    if (Array.isArray(res.data)) {
       setUsers(res.data.filter((u) => u.role !== "CUSTOMER"));
     } else {
       showToast("error", res.error || "Failed to load team members.");

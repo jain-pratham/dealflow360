@@ -161,8 +161,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!user?.id) return;
 
-    const socketUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-    const socket: Socket = io(`${socketUrl}/notifications`, {
+    const rawUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+    const socketBase = rawUrl.replace(/\/api\/?$/, "");
+    const socket: Socket = io(`${socketBase}/notifications`, {
       transports: ["websocket", "polling"],
     });
 

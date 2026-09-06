@@ -234,6 +234,18 @@ export class ApprovalsService {
       }).catch((e) => this.logger.error('Failed to dispatch approval notification', e));
     }
 
+    // Notify Admins
+    this.notificationsService.notifyAdmins({
+      type: NotificationType.APPROVAL_APPROVED,
+      title: `Quotation ${ar.quotation?.quoteNumber || ''} Approved`,
+      message: `Discount approval request for ${ar.quotation?.quoteNumber || ''} was approved by ${currentUser.name}.`,
+      entityType: 'QUOTATION',
+      entityId: ar.quotationId,
+      priority: NotificationPriority.NORMAL,
+      deduplicationKey: `APPROVAL_APPROVED_ADMIN_${id}`,
+      metadata: { url: `/admin/approval-chains` },
+    }).catch(() => {});
+
     // Fire-and-forget deal health recalculation
     this.dealHealthService
       .recalculateQuotationHealth(ar.quotationId)

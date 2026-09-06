@@ -93,27 +93,19 @@ export default function SignupPage() {
   // UI status
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Validate Step 1
+  // Validate Step 1 (Personal Information)
   const validateStep1 = (): boolean => {
-    if (!firstName.trim()) {
-      setGeneralError("Please enter your First Name.");
-      return false;
-    }
-    if (!lastName.trim()) {
-      setGeneralError("Please enter your Last Name.");
-      return false;
-    }
-    if (!dob) {
-      setGeneralError("Please select your Date of Birth.");
-      return false;
-    }
-    if (!gender) {
-      setGeneralError("Please select your Gender.");
-      return false;
-    }
-    if (!maritalStatus) {
-      setGeneralError("Please select your Marital Status.");
+    const errs: Record<string, string> = {};
+    if (!firstName.trim()) errs.firstName = "Please enter your first name.";
+    if (!lastName.trim()) errs.lastName = "Please enter your last name.";
+    if (!dob) errs.dob = "Please select your date of birth.";
+    if (!gender) errs.gender = "Please select your gender.";
+    if (!maritalStatus) errs.maritalStatus = "Please select your marital status.";
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setGeneralError("Please fix the highlighted errors below.");
       return false;
     }
     setGeneralError(null);
@@ -122,12 +114,32 @@ export default function SignupPage() {
 
   // Validate Step 2 (Contact Information)
   const validateStep2 = (): boolean => {
-    if (!email || !email.includes("@")) {
-      setGeneralError("Please enter a valid Email Address.");
-      return false;
+    const errs: Record<string, string> = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!email.trim()) {
+      errs.email = "Email address is required.";
+    } else if (!emailRegex.test(email.trim())) {
+      errs.email = "Please enter a valid email address (e.g. name@company.com).";
     }
-    if (!mobileNumber.trim()) {
-      setGeneralError("Please enter your Mobile Number.");
+
+    const cleanMobile = mobileNumber.replace(/\D/g, "");
+    if (!cleanMobile) {
+      errs.mobileNumber = "Mobile number is required.";
+    } else if (cleanMobile.length !== 10) {
+      errs.mobileNumber = "Please enter a valid 10-digit mobile number.";
+    }
+
+    if (secondaryPhone) {
+      const cleanSec = secondaryPhone.replace(/\D/g, "");
+      if (cleanSec.length !== 10) {
+        errs.secondaryPhone = "Secondary phone must be a 10-digit number.";
+      }
+    }
+
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setGeneralError("Please fix the highlighted errors below.");
       return false;
     }
     setGeneralError(null);
@@ -136,24 +148,15 @@ export default function SignupPage() {
 
   // Validate Step 3 (Address Information)
   const validateStep3 = (): boolean => {
-    if (!streetAddress.trim()) {
-      setGeneralError("Please enter your Street Address.");
-      return false;
-    }
-    if (!city.trim()) {
-      setGeneralError("Please enter your City.");
-      return false;
-    }
-    if (!state.trim()) {
-      setGeneralError("Please enter your State / Province.");
-      return false;
-    }
-    if (!postalCode.trim()) {
-      setGeneralError("Please enter your Postal / ZIP Code.");
-      return false;
-    }
-    if (!country) {
-      setGeneralError("Please select your Country.");
+    const errs: Record<string, string> = {};
+    if (!streetAddress.trim()) errs.streetAddress = "Please enter your street address.";
+    if (!city.trim()) errs.city = "Please enter your city.";
+    if (!state.trim()) errs.state = "Please enter your state or province.";
+    if (!postalCode.trim() || postalCode.length < 4) errs.postalCode = "Please enter a valid postal / ZIP code.";
+    if (!country) errs.country = "Please select your country.";
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setGeneralError("Please fix the highlighted errors below.");
       return false;
     }
     setGeneralError(null);
@@ -162,12 +165,22 @@ export default function SignupPage() {
 
   // Validate Step 4 (Security Credentials)
   const validateStep4 = (): boolean => {
-    if (password.length < 6) {
-      setGeneralError("Password must be at least 6 characters long.");
-      return false;
+    const errs: Record<string, string> = {};
+    if (password.length < 8) {
+      errs.password = "Password must be at least 8 characters long.";
+    } else if (!/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
+      errs.password = "Password must contain both letters and numbers.";
     }
-    if (password !== confirmPassword) {
-      setGeneralError("Passwords do not match. Please check again.");
+
+    if (!confirmPassword) {
+      errs.confirmPassword = "Please confirm your password.";
+    } else if (password !== confirmPassword) {
+      errs.confirmPassword = "Passwords do not match.";
+    }
+
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setGeneralError("Please fix the highlighted errors below.");
       return false;
     }
     setGeneralError(null);
@@ -490,16 +503,29 @@ export default function SignupPage() {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail className="h-4 w-4 text-slate-400" />
+                      <Mail className={`h-4 w-4 ${fieldErrors.email ? "text-rose-400" : "text-slate-400"}`} />
                     </div>
                     <input
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: "" }));
+                      }}
                       placeholder="name@company.com"
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 bg-slate-50/70 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-[#007FFF] transition-all"
+                      className={`w-full pl-9 pr-3 py-2.5 rounded-xl border ${
+                        fieldErrors.email
+                          ? "border-rose-500 bg-rose-50/40 text-rose-900 focus:ring-rose-500/20 focus:border-rose-500"
+                          : "border-slate-300 bg-slate-50/70 text-slate-900 focus:ring-blue-500/15 focus:border-[#007FFF]"
+                      } text-xs sm:text-sm placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all`}
                     />
                   </div>
+                  {fieldErrors.email && (
+                    <p className="text-[11px] font-medium text-rose-500 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {fieldErrors.email}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -520,17 +546,31 @@ export default function SignupPage() {
                     </select>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Phone className="h-4 w-4 text-slate-400" />
+                        <Phone className={`h-4 w-4 ${fieldErrors.mobileNumber ? "text-rose-400" : "text-slate-400"}`} />
                       </div>
                       <input
                         type="tel"
                         value={mobileNumber}
-                        onChange={(e) => setMobileNumber(e.target.value)}
-                        placeholder="98765 43210"
-                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 bg-slate-50/70 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-[#007FFF] transition-all"
+                        onChange={(e) => {
+                          const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+                          setMobileNumber(digitsOnly);
+                          if (fieldErrors.mobileNumber) setFieldErrors((prev) => ({ ...prev, mobileNumber: "" }));
+                        }}
+                        placeholder="9876543210"
+                        className={`w-full pl-9 pr-3 py-2.5 rounded-xl border ${
+                          fieldErrors.mobileNumber
+                            ? "border-rose-500 bg-rose-50/40 text-rose-900 focus:ring-rose-500/20 focus:border-rose-500"
+                            : "border-slate-300 bg-slate-50/70 text-slate-900 focus:ring-blue-500/15 focus:border-[#007FFF]"
+                        } text-xs sm:text-sm placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all`}
                       />
                     </div>
                   </div>
+                  {fieldErrors.mobileNumber && (
+                    <p className="text-[11px] font-medium text-rose-500 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {fieldErrors.mobileNumber}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -539,16 +579,30 @@ export default function SignupPage() {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Phone className="h-4 w-4 text-slate-400" />
+                      <Phone className={`h-4 w-4 ${fieldErrors.secondaryPhone ? "text-rose-400" : "text-slate-400"}`} />
                     </div>
                     <input
                       type="tel"
                       value={secondaryPhone}
-                      onChange={(e) => setSecondaryPhone(e.target.value)}
+                      onChange={(e) => {
+                        const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        setSecondaryPhone(digitsOnly);
+                        if (fieldErrors.secondaryPhone) setFieldErrors((prev) => ({ ...prev, secondaryPhone: "" }));
+                      }}
                       placeholder="Enter secondary phone"
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 bg-slate-50/70 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-[#007FFF] transition-all"
+                      className={`w-full pl-9 pr-3 py-2.5 rounded-xl border ${
+                        fieldErrors.secondaryPhone
+                          ? "border-rose-500 bg-rose-50/40 text-rose-900 focus:ring-rose-500/20 focus:border-rose-500"
+                          : "border-slate-300 bg-slate-50/70 text-slate-900 focus:ring-blue-500/15 focus:border-[#007FFF]"
+                      } text-xs sm:text-sm placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all`}
                     />
                   </div>
+                  {fieldErrors.secondaryPhone && (
+                    <p className="text-[11px] font-medium text-rose-500 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {fieldErrors.secondaryPhone}
+                    </p>
+                  )}
                 </div>
               </div>
 

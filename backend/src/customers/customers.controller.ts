@@ -14,6 +14,7 @@ import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { GetUser } from '../auth/decorators/get-user.decorator';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -36,8 +37,8 @@ export class CustomersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateCustomerDto) {
-    return this.customersService.create(dto);
+  async create(@Body() dto: CreateCustomerDto, @GetUser() user?: any) {
+    return this.customersService.create(dto, user);
   }
 
   @Patch(':id')

@@ -259,6 +259,18 @@ export class RazorpayService {
       }).catch((e) => this.logger.error('Failed to dispatch payment notification to sales rep', e));
     }
 
+    // Notify ADMIN and FINANCE teams
+    this.notificationsService.notifyRoles([UserRole.ADMIN, UserRole.FINANCE], {
+      type: NotificationType.PAYMENT_SUCCESS,
+      title: `Payment Verified: Invoice ${invoice.invoiceNumber}`,
+      message: `Online payment of ₹${paymentAmount} verified for invoice ${invoice.invoiceNumber} (${invoice.customer?.name || 'Customer'}).`,
+      entityType: 'INVOICE',
+      entityId: invoice.id,
+      priority: NotificationPriority.NORMAL,
+      deduplicationKey: `PAYMENT_SUCCESS_ADMIN_${payment.id}`,
+      metadata: { url: `/finance/billing` },
+    }).catch((e) => this.logger.error('Failed to dispatch payment notification to admin/finance', e));
+
     return {
       message: 'Payment verified and recorded successfully!',
       invoiceStatus: newStatus,

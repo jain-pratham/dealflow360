@@ -217,8 +217,11 @@ export default function CustomerManagementView() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formValues.email.trim())) {
       errors.email = "Please enter a valid email address.";
     }
-    if (!formValues.customerTier) {
-      errors.customerTier = "Customer tier is required.";
+    if (formValues.phone) {
+      const cleanPhone = formValues.phone.replace(/\D/g, "");
+      if (cleanPhone.length < 10) {
+        errors.phone = "Please enter a valid 10-digit phone number.";
+      }
     }
 
     setFormErrors(errors);
@@ -882,11 +885,21 @@ export default function CustomerManagementView() {
                       type="tel"
                       value={formValues.phone}
                       onChange={(e) =>
-                        setFormValues({ ...formValues, phone: e.target.value })
+                        setFormValues({ ...formValues, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })
                       }
-                      placeholder="+91 XXXXX XXXXX"
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D69B2]"
+                      placeholder="9876543210"
+                      className={`w-full px-4 py-3 rounded-xl border ${
+                        formErrors.phone
+                          ? "border-rose-500 bg-rose-50/50 text-rose-900"
+                          : "border-slate-300 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                      } text-sm focus:outline-none focus:ring-2 focus:ring-[#0D69B2]`}
                     />
+                    {formErrors.phone && (
+                      <p className="text-xs text-rose-500 mt-1.5 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.phone}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

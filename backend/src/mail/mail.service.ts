@@ -332,4 +332,28 @@ export class MailService {
       return false;
     }
   }
+
+  async sendMail(toEmail: string, subject: string, htmlContent: string): Promise<boolean> {
+    const fromAddress =
+      this.configService?.get<string>('EMAIL_FROM') || process.env.EMAIL_FROM || 'no-reply@dealflow360.com';
+
+    if (!this.transporter) {
+      this.logger.warn(`Transporter not configured. Email to ${toEmail} with subject '${subject}' recorded.`);
+      return false;
+    }
+
+    try {
+      const info = await this.transporter.sendMail({
+        from: `"DealFlow360" <${fromAddress}>`,
+        to: toEmail,
+        subject,
+        html: htmlContent,
+      });
+      this.logger.log(`Mail sent to ${toEmail}: messageId=${info.messageId}`);
+      return true;
+    } catch (error: any) {
+      this.logger.error(`Failed to send mail to ${toEmail}: ${error?.message || error}`, error?.stack);
+      return false;
+    }
+  }
 }

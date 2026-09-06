@@ -1,15 +1,16 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { NotificationPriority, NotificationType, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private transformCustomer(c: any) {
     return {
@@ -50,7 +51,7 @@ export class CustomersService {
     return this.transformCustomer(customer);
   }
 
-  async create(dto: CreateCustomerDto) {
+  async create(dto: CreateCustomerDto, currentUser?: any) {
     const emailLower = dto.email.toLowerCase();
 
     const existingCustomer = await this.prisma.customer.findFirst({
@@ -81,6 +82,20 @@ export class CustomersService {
         isActive: dto.isActive !== undefined ? dto.isActive : true,
       },
     });
+
+    // Save Notification into PostgreSQL Database & Broadcast via Socket.IO
+    this.notificationsService
+      .notifyRoles([UserRole.ADMIN, UserRole.SALES_MANAGER, UserRole.SALES_REP], {
+        type: NotificationType.SYSTEM_ALERT,
+        title: `New Customer Added: ${created.companyName}`,
+        message: `Customer '${created.companyName}' (${created.contactEmail}) was created by ${currentUser?.name || 'Admin'}.`,
+        entityType: 'CUSTOMER',
+        entityId: created.id,
+        priority: NotificationPriority.NORMAL,
+        deduplicationKey: `CUSTOMER_CREATED_${created.id}`,
+        metadata: { url: '/admin/customers' },
+      })
+      .catch((err) => console.error('Failed to dispatch customer notification:', err));
 
     return this.transformCustomer(created);
   }
