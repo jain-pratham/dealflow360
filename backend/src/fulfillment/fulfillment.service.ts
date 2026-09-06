@@ -10,6 +10,8 @@ import {
 import {
   BackorderStatus,
   FulfillmentStatus,
+  NotificationPriority,
+  NotificationType,
   QuotationStatus,
   UserRole,
 } from '@prisma/client';
@@ -24,6 +26,7 @@ import {
   InventoryAdjustmentType,
 } from './dto/adjust-inventory.dto';
 import { DealHealthService } from '../deal-health/deal-health.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class FulfillmentService implements OnModuleInit {
@@ -33,6 +36,7 @@ export class FulfillmentService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly fulfillmentEngine: FulfillmentEngineService,
     private readonly dealHealthService: DealHealthService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async onModuleInit() {
@@ -405,6 +409,62 @@ export class FulfillmentService implements OnModuleInit {
     });
 
     this.logger.log(`[AUDIT] Fulfillment created for quotation ${quotation.quoteNumber}`);
+
+    // Side Effect Notifications
+    if (quotation.salesRepId) {
+      this.notificationsService
+        .createNotification({
+          userId: quotation.salesRepId,
+          type: NotificationType.FULFILLMENT_STARTED,
+          title: 'Fulfillment Started',
+          message: `Fulfillment plan executed for quotation ${quotation.quoteNumber}. Allocated: ${result.plan.totalAllocated}`,
+          priority: NotificationPriority.NORMAL,
+          entityType: 'quotation',
+          entityId: quotation.id,
+          deduplicationKey: `FULFILLMENT_STARTED_${quotation.id}`,
+        })
+        .catch((err) => this.logger.error(`Notification failed: ${err.message}`));
+    }
+
+    if (result.plan.hasBackorder) {
+      const backorderMsg = `Backorder created for quotation ${quotation.quoteNumber}. Pending items: ${result.plan.totalBackordered}`;
+      if (quotation.salesRepId) {
+        this.notificationsService
+          .createNotification({
+            userId: quotation.salesRepId,
+            type: NotificationType.BACKORDER_CREATED,
+            title: 'Backorder Created',
+            message: backorderMsg,
+            priority: NotificationPriority.HIGH,
+            entityType: 'quotation',
+            entityId: quotation.id,
+            deduplicationKey: `BACKORDER_CREATED_${quotation.id}`,
+          })
+          .catch((err) => this.logger.error(`Notification failed: ${err.message}`));
+      }
+      if (quotation.customer?.id) {
+        this.prisma.user
+          .findFirst({ where: { customerId: quotation.customer.id, role: UserRole.CUSTOMER } })
+          .then((customerUser) => {
+            if (customerUser) {
+              this.notificationsService
+                .createNotification({
+                  userId: customerUser.id,
+                  type: NotificationType.BACKORDER_CREATED,
+                  title: 'Item Backordered',
+                  message: `Some items in your order ${quotation.quoteNumber} are currently backordered.`,
+                  priority: NotificationPriority.NORMAL,
+                  entityType: 'quotation',
+                  entityId: quotation.id,
+                  deduplicationKey: `BACKORDER_CREATED_CUST_${quotation.id}`,
+                })
+                .catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
     return result;
   }
 

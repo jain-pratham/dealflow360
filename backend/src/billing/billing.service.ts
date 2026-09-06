@@ -19,6 +19,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { QueryInvoicesDto } from './dto/query-invoices.dto';
 import { DealHealthService } from '../deal-health/deal-health.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType, NotificationPriority } from '@prisma/client';
 
 @Injectable()
 export class BillingService {
@@ -28,6 +30,7 @@ export class BillingService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => DealHealthService))
     private readonly dealHealthService: DealHealthService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private async generateInvoiceNumber(type: InvoiceType): Promise<string> {
@@ -338,11 +341,55 @@ export class BillingService {
       return results;
     };
 
-    if (externalTx) {
-      return execute(externalTx);
-    } else {
-      return this.prisma.$transaction(execute);
+    const res = externalTx ? await execute(externalTx) : await this.prisma.$transaction(execute);
+
+    if (res.invoice) {
+      this.prisma.user
+        .findFirst({ where: { customerId: res.invoice.customerId, role: UserRole.CUSTOMER } })
+        .then((custUser) => {
+          if (custUser) {
+            this.notificationsService
+              .createNotification({
+                userId: custUser.id,
+                type: NotificationType.INVOICE_GENERATED,
+                title: 'Invoice Generated',
+                message: `Invoice ${res.invoice.invoiceNumber} for amount ${res.invoice.currency} ${res.invoice.amount} has been generated.`,
+                priority: NotificationPriority.NORMAL,
+                entityType: 'invoice',
+                entityId: res.invoice.id,
+                deduplicationKey: `INVOICE_GENERATED_${res.invoice.id}`,
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
     }
+
+    if (res.subscriptions && res.subscriptions.length > 0) {
+      for (const sub of res.subscriptions) {
+        this.prisma.user
+          .findFirst({ where: { customerId: sub.customerId, role: UserRole.CUSTOMER } })
+          .then((custUser) => {
+            if (custUser) {
+              this.notificationsService
+                .createNotification({
+                  userId: custUser.id,
+                  type: NotificationType.SUBSCRIPTION_CREATED,
+                  title: 'Subscription Activated',
+                  message: `Subscription active (${sub.currency} ${sub.unitPrice}/${sub.billingCycle?.toLowerCase()}).`,
+                  priority: NotificationPriority.NORMAL,
+                  entityType: 'subscription',
+                  entityId: sub.id,
+                  deduplicationKey: `SUBSCRIPTION_CREATED_${sub.id}`,
+                })
+                .catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    return res;
   }
 
   // --- Manual Payment Recording ---
@@ -429,6 +476,57 @@ export class BillingService {
             `Failed to recalculate deal health after payment for quotation ${invoice.quotationId}: ${err.message}`,
           ),
         );
+    }
+
+    // Side Effect Notifications
+    // 1. Customer User
+    this.prisma.user
+      .findFirst({ where: { customerId: invoice.customerId, role: UserRole.CUSTOMER } })
+      .then((custUser) => {
+        if (custUser) {
+          this.notificationsService
+            .createNotification({
+              userId: custUser.id,
+              type: NotificationType.PAYMENT_SUCCESS,
+              title: 'Payment Successful',
+              message: `Payment of ${invoice.currency} ${paymentAmount} for invoice ${invoice.invoiceNumber} recorded successfully.`,
+              priority: NotificationPriority.NORMAL,
+              entityType: 'invoice',
+              entityId: invoice.id,
+              deduplicationKey: `PAYMENT_SUCCESS_${payment.id}_CUST`,
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+
+    // 2. Finance users
+    this.notificationsService
+      .notifyRoles([UserRole.FINANCE], {
+        type: NotificationType.PAYMENT_SUCCESS,
+        title: 'Payment Received',
+        message: `Payment of ${invoice.currency} ${paymentAmount} received for Invoice ${invoice.invoiceNumber}.`,
+        priority: NotificationPriority.NORMAL,
+        entityType: 'invoice',
+        entityId: invoice.id,
+        deduplicationKey: `PAYMENT_SUCCESS_${payment.id}_FIN`,
+      })
+      .catch(() => {});
+
+    // 3. Sales Rep
+    if (invoice.quotation?.salesRepId) {
+      this.notificationsService
+        .createNotification({
+          userId: invoice.quotation.salesRepId,
+          type: NotificationType.PAYMENT_SUCCESS,
+          title: 'Payment Received',
+          message: `Payment of ${invoice.currency} ${paymentAmount} received for Invoice ${invoice.invoiceNumber} (Quote ${invoice.quotation.quoteNumber}).`,
+          priority: NotificationPriority.NORMAL,
+          entityType: 'invoice',
+          entityId: invoice.id,
+          deduplicationKey: `PAYMENT_SUCCESS_${payment.id}_REP`,
+        })
+        .catch(() => {});
     }
 
     return {

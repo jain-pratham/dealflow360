@@ -32,7 +32,6 @@ const ROLES_LIST: UserRole[] = [
   "SALES_REP",
   "SALES_MANAGER",
   "FINANCE",
-  "CUSTOMER",
 ];
 
 export default function EditUserPage() {

@@ -21,17 +21,40 @@ import {
 import { useNotifications, AppNotification } from "@/context/notification-context";
 
 export function NotificationCenterView() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAll } =
-    useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAll,
+    pushStatus,
+    enableWebPush,
+  } = useNotifications();
   const [activeTab, setActiveTab] = useState<"ALL" | "UNREAD" | "HIGH" | "ENQUIRY" | "SYSTEM">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredNotifications = notifications.filter((n) => {
     // Tab filter
     if (activeTab === "UNREAD" && n.isRead) return false;
-    if (activeTab === "HIGH" && n.tagStyle !== "high") return false;
-    if (activeTab === "ENQUIRY" && n.tagStyle !== "enquiry") return false;
-    if (activeTab === "SYSTEM" && n.type !== "SYSTEM" && n.type !== "GOVERNANCE") return false;
+    if (
+      activeTab === "HIGH" &&
+      n.tagStyle !== "high" &&
+      n.tagStyle !== "warning" &&
+      !["APPROVAL_REQUESTED", "DEAL_HEALTH_CRITICAL", "PAYMENT_FAILED"].includes(n.type)
+    )
+      return false;
+    if (
+      activeTab === "ENQUIRY" &&
+      !["CUSTOMER_NEGOTIATION_SUBMITTED", "QUOTATION_CONFIRMED", "QUOTATION_SENT", "INVOICE_GENERATED", "PAYMENT_SUCCESS", "BACKORDER_CREATED"].includes(n.type) &&
+      n.tagStyle !== "enquiry"
+    )
+      return false;
+    if (
+      activeTab === "SYSTEM" &&
+      !["SYSTEM_ALERT", "ROLE_UPDATED", "DEAL_HEALTH_CRITICAL", "APPROVAL_REQUESTED", "APPROVAL_APPROVED", "APPROVAL_REJECTED", "SYSTEM", "GOVERNANCE"].includes(n.type)
+    )
+      return false;
 
     // Search query filter
     if (searchQuery.trim()) {
@@ -125,6 +148,25 @@ export function NotificationCenterView() {
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
             <button
+              onClick={() => enableWebPush()}
+              disabled={pushStatus === "granted"}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                pushStatus === "granted"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900"
+                  : "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 hover:bg-purple-100 border border-purple-200 dark:border-purple-900"
+              }`}
+            >
+              <Bell size={15} />
+              <span>
+                {pushStatus === "granted"
+                  ? "Desktop Push Enabled"
+                  : pushStatus === "denied"
+                  ? "Push Blocked in Browser"
+                  : "Enable Desktop Push"}
+              </span>
+            </button>
+
+            <button
               onClick={markAllAsRead}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-slate-800 text-[#0D69B2] dark:text-blue-400 text-xs font-bold hover:bg-blue-100/70 dark:hover:bg-slate-700 transition-all cursor-pointer"
             >
@@ -147,9 +189,32 @@ export function NotificationCenterView() {
           {[
             { id: "ALL", label: "All Notifications", count: notifications.length },
             { id: "UNREAD", label: "Unread", count: unreadCount },
-            { id: "HIGH", label: "High Priority", count: notifications.filter((n) => n.tagStyle === "high").length },
-            { id: "ENQUIRY", label: "Enquiries", count: notifications.filter((n) => n.tagStyle === "enquiry").length },
-            { id: "SYSTEM", label: "System & Governance", count: notifications.filter((n) => n.type === "SYSTEM" || n.type === "GOVERNANCE").length },
+            {
+              id: "HIGH",
+              label: "High Priority",
+              count: notifications.filter(
+                (n) =>
+                  n.tagStyle === "high" ||
+                  n.tagStyle === "warning" ||
+                  ["APPROVAL_REQUESTED", "DEAL_HEALTH_CRITICAL", "PAYMENT_FAILED"].includes(n.type)
+              ).length,
+            },
+            {
+              id: "ENQUIRY",
+              label: "Orders & Activity",
+              count: notifications.filter(
+                (n) =>
+                  ["CUSTOMER_NEGOTIATION_SUBMITTED", "QUOTATION_CONFIRMED", "QUOTATION_SENT", "INVOICE_GENERATED", "PAYMENT_SUCCESS", "BACKORDER_CREATED"].includes(n.type) ||
+                  n.tagStyle === "enquiry"
+              ).length,
+            },
+            {
+              id: "SYSTEM",
+              label: "System & Governance",
+              count: notifications.filter((n) =>
+                ["SYSTEM_ALERT", "ROLE_UPDATED", "DEAL_HEALTH_CRITICAL", "APPROVAL_REQUESTED", "APPROVAL_APPROVED", "APPROVAL_REJECTED", "SYSTEM", "GOVERNANCE"].includes(n.type)
+              ).length,
+            },
           ].map((tab) => (
             <button
               key={tab.id}

@@ -6,9 +6,10 @@ import { ApprovalChainsController } from './approval-chains.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { DealHealthModule } from '../deal-health/deal-health.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, forwardRef(() => DealHealthModule)],
+  imports: [PrismaModule, AuthModule, forwardRef(() => DealHealthModule), NotificationsModule],
   controllers: [ApprovalsController, ApprovalChainsController],
   providers: [ApprovalsService, ApprovalChainsService],
   exports: [ApprovalsService, ApprovalChainsService],

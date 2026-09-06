@@ -10,6 +10,8 @@ import {
   ApprovalRoleRequired,
   ApprovalStatus,
   LineType,
+  NotificationPriority,
+  NotificationType,
   ProductType,
   QuotationStatus,
   UserRole,
@@ -20,6 +22,7 @@ import { PriceListsService } from '../price-lists/price-lists.service';
 import { DiscountRulesService } from '../discount-rules/discount-rules.service';
 import { MailService } from '../mail/mail.service';
 import { DealHealthService } from '../deal-health/deal-health.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { AddQuotationLineDto } from './dto/add-quotation-line.dto';
 import { UpdateQuotationLineDto } from './dto/update-quotation-line.dto';
@@ -35,6 +38,7 @@ export class QuotationsService {
     private readonly discountRulesService: DiscountRulesService,
     private readonly mailService: MailService,
     private readonly dealHealthService: DealHealthService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private async generateQuoteNumber(): Promise<string> {
@@ -713,11 +717,60 @@ export class QuotationsService {
           customer: true,
           salesRep: true,
           lines: { include: { product: true } },
-          approvalRequests: true,
-          auditLogs: true,
+          approvalRequests: { include: { approvalChain: true, reviewer: true } },
+          auditLogs: { include: { user: true }, orderBy: { timestamp: 'desc' } },
         },
       });
     });
+
+    // Notify Reviewers of Pending Approval & User feedback
+    if (requiresApproval && requiredRole) {
+      const targetRole = requiredRole === 'FINANCE' ? UserRole.FINANCE : UserRole.SALES_MANAGER;
+      this.prisma.user.findMany({
+        where: { role: targetRole, isActive: true },
+        select: { id: true },
+      }).then((reviewers) => {
+        const reviewerIds = reviewers.map((r) => r.id);
+        if (reviewerIds.length > 0) {
+          this.notificationsService.createNotificationForMultipleUsers(reviewerIds, {
+            type: NotificationType.APPROVAL_REQUESTED,
+            title: `Approval Required: ${quotation.quoteNumber}`,
+            message: `Quotation ${quotation.quoteNumber} requires ${requiredRole} approval for ${maxRequestedDiscount}% discount.`,
+            entityType: 'QUOTATION',
+            entityId: quotation.id,
+            priority: NotificationPriority.HIGH,
+            deduplicationKey: `APPROVAL_REQ_${quotation.id}_${requiredRole}`,
+            metadata: { url: targetRole === UserRole.FINANCE ? '/finance/approval-queue' : '/manager/approval-queue' },
+          }).catch((e) => this.logger.error('Failed to dispatch approval request notifications', e));
+        }
+      }).catch((e) => this.logger.error('Failed to query reviewers for approval notification', e));
+
+      // Notify Sales Rep who submitted
+      this.notificationsService.createNotification({
+        userId: currentUser.id,
+        type: NotificationType.QUOTATION_SENT,
+        title: `Submitted for Approval: ${quotation.quoteNumber}`,
+        message: `Quotation ${quotation.quoteNumber} submitted for ${requiredRole} approval.`,
+        entityType: 'QUOTATION',
+        entityId: quotation.id,
+        priority: NotificationPriority.NORMAL,
+        deduplicationKey: `QUOTATION_SUBMITTED_REP_${quotation.id}`,
+        metadata: { url: `/sales/quotations` },
+      }).catch(() => {});
+    } else {
+      // Auto-approved notification
+      this.notificationsService.createNotification({
+        userId: currentUser.id,
+        type: NotificationType.APPROVAL_APPROVED,
+        title: `Quotation Approved: ${quotation.quoteNumber}`,
+        message: `Quotation ${quotation.quoteNumber} approved automatically (discounts within standard threshold).`,
+        entityType: 'QUOTATION',
+        entityId: quotation.id,
+        priority: NotificationPriority.NORMAL,
+        deduplicationKey: `QUOTATION_AUTO_APPROVED_${quotation.id}`,
+        metadata: { url: `/sales/quotations` },
+      }).catch(() => {});
+    }
 
     if (updatedQuotation) {
       this.dealHealthService.recalculateQuotationHealth(quotationId).catch(e => this.logger.error('Deal health recalculation failed', e));

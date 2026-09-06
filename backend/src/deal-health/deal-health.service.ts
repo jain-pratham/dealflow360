@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DealHealthGateway } from './deal-health.gateway';
 import { DiscountRulesService } from '../discount-rules/discount-rules.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   DealHealthAlertType,
   DealHealthSeverity,
@@ -11,6 +12,9 @@ import {
   BackorderStatus,
   InvoiceStatus,
   ProductType,
+  NotificationPriority,
+  NotificationType,
+  UserRole,
 } from '@prisma/client';
 
 @Injectable()
@@ -33,6 +37,7 @@ export class DealHealthService {
     private readonly prisma: PrismaService,
     private readonly gateway: DealHealthGateway,
     private readonly discountRulesService: DiscountRulesService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -356,6 +361,21 @@ export class DealHealthService {
 
     // Emit event
     this.gateway.emitHealthUpdate(quotationId, score, status, finalAlerts);
+
+    // Notify Sales Rep & Managers if deal health is CRITICAL
+    if (status === 'CRITICAL' && quotation.salesRepId) {
+      this.notificationsService.createNotification({
+        userId: quotation.salesRepId,
+        type: NotificationType.DEAL_HEALTH_CRITICAL,
+        title: `Critical Deal Risk: Quote ${quotation.quoteNumber}`,
+        message: `Deal health score for quote ${quotation.quoteNumber} dropped to ${score}/100. ${finalAlerts.length} risk factor(s) detected.`,
+        entityType: 'QUOTATION',
+        entityId: quotationId,
+        priority: NotificationPriority.CRITICAL,
+        deduplicationKey: `DH_CRIT_${quotationId}_${Math.floor(Date.now() / (1000 * 3600 * 6))}`,
+        metadata: { url: `/sales/deal-health` },
+      }).catch((e) => this.logger.error('Failed to dispatch deal health notification', e));
+    }
 
     return {
       quotationId,

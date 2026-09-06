@@ -10,6 +10,8 @@ import { InvoiceStatus, UserRole } from '@prisma/client';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingService } from '../billing/billing.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationPriority, NotificationType } from '@prisma/client';
 import { VerifyRazorpayPaymentDto } from './dto/verify-razorpay-payment.dto';
 
 @Injectable()
@@ -20,6 +22,7 @@ export class RazorpayService {
     private readonly prisma: PrismaService,
     private readonly billingService: BillingService,
     private readonly configService: ConfigService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private get keyId(): string {
@@ -226,6 +229,35 @@ export class RazorpayService {
     });
 
     this.logger.log(`[RAZORPAY] Payment '${razorpay_payment_id}' VERIFIED & RECORDED for Invoice '${invoice.invoiceNumber}'`);
+
+    // Notify Customer & Sales Rep / Finance of Payment Success
+    if (currentUser?.id) {
+      this.notificationsService.createNotification({
+        userId: currentUser.id,
+        type: NotificationType.PAYMENT_SUCCESS,
+        title: `Payment Successful: Invoice ${invoice.invoiceNumber}`,
+        message: `Your payment of ₹${paymentAmount} for invoice ${invoice.invoiceNumber} was successfully verified.`,
+        entityType: 'INVOICE',
+        entityId: invoice.id,
+        priority: NotificationPriority.NORMAL,
+        deduplicationKey: `PAYMENT_SUCCESS_${payment.id}`,
+        metadata: { url: `/portal/invoices/${invoice.id}` },
+      }).catch((e) => this.logger.error('Failed to dispatch payment success notification', e));
+    }
+
+    if (invoice.quotation?.salesRepId && invoice.quotation.salesRepId !== currentUser?.id) {
+      this.notificationsService.createNotification({
+        userId: invoice.quotation.salesRepId,
+        type: NotificationType.PAYMENT_SUCCESS,
+        title: `Payment Received: Quote ${invoice.quotation.quoteNumber}`,
+        message: `Payment of ₹${paymentAmount} received for invoice ${invoice.invoiceNumber}.`,
+        entityType: 'INVOICE',
+        entityId: invoice.id,
+        priority: NotificationPriority.NORMAL,
+        deduplicationKey: `PAYMENT_SUCCESS_REP_${payment.id}`,
+        metadata: { url: `/sales/billing` },
+      }).catch((e) => this.logger.error('Failed to dispatch payment notification to sales rep', e));
+    }
 
     return {
       message: 'Payment verified and recorded successfully!',

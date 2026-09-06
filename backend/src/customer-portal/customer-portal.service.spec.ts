@@ -6,6 +6,8 @@ import { BillingService } from '../billing/billing.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { QuotationStatus } from '@prisma/client';
 
+import { NotificationsService } from '../notifications/notifications.service';
+
 describe('CustomerPortalService', () => {
   let service: CustomerPortalService;
   let prisma: PrismaService;
@@ -24,6 +26,10 @@ describe('CustomerPortalService', () => {
   const mockDiscountRulesService = {};
   const mockBillingService = {};
   const mockSubscriptionsService = {};
+  const mockNotificationsService = {
+    createNotification: vi.fn().mockResolvedValue({}),
+    notifyRoles: vi.fn().mockResolvedValue([]),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -33,6 +39,7 @@ describe('CustomerPortalService', () => {
         { provide: DiscountRulesService, useValue: mockDiscountRulesService },
         { provide: BillingService, useValue: mockBillingService },
         { provide: SubscriptionsService, useValue: mockSubscriptionsService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 

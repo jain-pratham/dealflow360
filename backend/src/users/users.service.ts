@@ -35,6 +35,9 @@ export class UsersService {
 
   async findAll() {
     return this.prisma.user.findMany({
+      where: {
+        role: { not: UserRole.CUSTOMER },
+      },
       select: USER_SELECT_FIELDS,
       orderBy: { createdAt: 'desc' },
     });

@@ -10,6 +10,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DiscountRulesService } from '../discount-rules/discount-rules.service';
 import { BillingService } from '../billing/billing.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationPriority, NotificationType } from '@prisma/client';
 import { CustomerCommentDto } from './dto/customer-comment.dto';
 import { SubmitNegotiationDto } from './dto/submit-negotiation.dto';
 
@@ -22,6 +24,7 @@ export class CustomerPortalService {
     private readonly discountRulesService: DiscountRulesService,
     private readonly billingService: BillingService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private async getResolvedCustomerId(currentUser: any): Promise<string> {
@@ -635,6 +638,21 @@ export class CustomerPortalService {
 
     this.logger.log(`[AUDIT] Customer submitted negotiation for quotation ${quotation.quoteNumber}`);
 
+    // Notify Sales Rep of Customer Negotiation
+    if (quotation.salesRepId) {
+      this.notificationsService.createNotification({
+        userId: quotation.salesRepId,
+        type: NotificationType.CUSTOMER_NEGOTIATION_SUBMITTED,
+        title: `Customer Counter-Offer: ${quotation.quoteNumber}`,
+        message: `Customer submitted a negotiation request for quotation ${quotation.quoteNumber}.`,
+        entityType: 'QUOTATION',
+        entityId: quotation.id,
+        priority: NotificationPriority.HIGH,
+        deduplicationKey: `NEGOTIATION_${quotation.id}_${Date.now()}`,
+        metadata: { url: `/sales/quotations` },
+      }).catch((e) => this.logger.error('Failed to dispatch negotiation notification', e));
+    }
+
     return {
       message: 'Negotiation request submitted successfully.',
       status: requiresApproval ? QuotationStatus.PENDING_APPROVAL : QuotationStatus.UNDER_NEGOTIATION,
@@ -719,6 +737,41 @@ export class CustomerPortalService {
     });
 
     this.logger.log(`[AUDIT] Quotation ${quotation.quoteNumber} confirmed by customer`);
+
+    // Notify Sales Rep of Quotation Confirmation
+    if (quotation.salesRepId) {
+      this.notificationsService.createNotification({
+        userId: quotation.salesRepId,
+        type: NotificationType.QUOTATION_CONFIRMED,
+        title: `Order Confirmed: ${quotation.quoteNumber}`,
+        message: `Quotation ${quotation.quoteNumber} has been confirmed by the customer.`,
+        entityType: 'QUOTATION',
+        entityId: quotation.id,
+        priority: NotificationPriority.HIGH,
+        deduplicationKey: `CONFIRMED_${quotationId}`,
+        metadata: { url: `/sales/quotations` },
+      }).catch((e) => this.logger.error('Failed to dispatch confirmation notification to sales rep', e));
+    }
+
+    // Notify Finance Users
+    this.prisma.user.findMany({
+      where: { role: UserRole.FINANCE, isActive: true },
+      select: { id: true },
+    }).then((finUsers) => {
+      const ids = finUsers.map(u => u.id);
+      if (ids.length > 0) {
+        this.notificationsService.createNotificationForMultipleUsers(ids, {
+          type: NotificationType.QUOTATION_CONFIRMED,
+          title: `Confirmed Order Invoice: ${quotation.quoteNumber}`,
+          message: `Quotation ${quotation.quoteNumber} confirmed. Invoice generated for ₹${Number(quotation.totalAmount)}.`,
+          entityType: 'QUOTATION',
+          entityId: quotation.id,
+          priority: NotificationPriority.NORMAL,
+          deduplicationKey: `CONFIRMED_FIN_${quotationId}`,
+          metadata: { url: `/finance/billing` },
+        }).catch((e) => this.logger.error('Failed to dispatch confirmation notifications to finance', e));
+      }
+    }).catch((e) => this.logger.error('Failed to query finance users for confirmation notification', e));
 
     return {
       message: 'Quotation confirmed successfully!',

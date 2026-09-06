@@ -6,9 +6,10 @@ import { DiscountRulesModule } from '../discount-rules/discount-rules.module';
 import { AuthModule } from '../auth/auth.module';
 import { BillingModule } from '../billing/billing.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [PrismaModule, DiscountRulesModule, AuthModule, BillingModule, SubscriptionsModule],
+  imports: [PrismaModule, DiscountRulesModule, AuthModule, BillingModule, SubscriptionsModule, NotificationsModule],
   controllers: [CustomerPortalController],
   providers: [CustomerPortalService],
   exports: [CustomerPortalService],

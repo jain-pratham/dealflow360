@@ -162,6 +162,8 @@ model User {
   auditLogs             QuotationAuditLog[]
   commentsWritten       QuotationComment[]
   inventoryAdjustments  InventoryAdjustment[]
+  notifications         Notification[]
+  pushSubscriptions     PushSubscription[]
 
   @@map("users")
 }
@@ -749,3 +751,81 @@ model DealHealthAlert {
 
   @@map("deal_health_alerts")
 }
+
+// -----------------------------------------------------------------------------
+// NOTIFICATIONS & BROWSER PUSH SUBSCRIPTIONS
+// -----------------------------------------------------------------------------
+
+enum NotificationType {
+  APPROVAL_REQUESTED
+  APPROVAL_APPROVED
+  APPROVAL_REJECTED
+  CUSTOMER_NEGOTIATION_SUBMITTED
+  QUOTATION_CONFIRMED
+  QUOTATION_SENT
+  FULFILLMENT_STARTED
+  BACKORDER_CREATED
+  SHIPMENT_DISPATCHED
+  DELIVERY_COMPLETED
+  INVOICE_GENERATED
+  INVOICE_OVERDUE
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  SUBSCRIPTION_CREATED
+  RECURRING_INVOICE_GENERATED
+  RECURRING_PAYMENT_SUCCESS
+  RECURRING_PAYMENT_FAILED
+  SUBSCRIPTION_CANCELLED
+  DEAL_HEALTH_CRITICAL
+  ROLE_UPDATED
+  SYSTEM_ALERT
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+model Notification {
+  id               String               @id @default(uuid()) @db.Uuid
+  userId           String               @db.Uuid
+  type             NotificationType
+  title            String
+  message          String
+  entityType       String?
+  entityId         String?
+  metadata         Json?
+  priority         NotificationPriority @default(NORMAL)
+  isRead           Boolean              @default(false)
+  readAt           DateTime?
+  deduplicationKey String?              @unique
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([type])
+  @@index([entityType, entityId])
+  @@map("notifications")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+

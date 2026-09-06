@@ -5,6 +5,8 @@ import { SubscriptionInterval } from '@prisma/client';
 import { SubscriptionsService } from './subscriptions.service';
 import { PrismaService } from '../prisma/prisma.service';
 
+import { NotificationsService } from '../notifications/notifications.service';
+
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
   let prisma: PrismaService;
@@ -24,7 +26,15 @@ describe('SubscriptionsService', () => {
     quotationAuditLog: {
       create: jest.fn(),
     },
+    user: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'cust-user-1' }),
+    },
     $transaction: jest.fn((cb) => cb(mockPrismaService)),
+  };
+
+  const mockNotificationsService = {
+    createNotification: jest.fn().mockResolvedValue({}),
+    notifyRoles: jest.fn().mockResolvedValue([]),
   };
 
   beforeEach(async () => {
@@ -32,6 +42,7 @@ describe('SubscriptionsService', () => {
       providers: [
         SubscriptionsService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 

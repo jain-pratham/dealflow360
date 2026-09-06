@@ -9,6 +9,8 @@ import {
 import { ApprovalRoleRequired, ApprovalStatus, QuotationStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DealHealthService } from '../deal-health/deal-health.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationPriority, NotificationType } from '@prisma/client';
 
 @Injectable()
 export class ApprovalsService {
@@ -17,6 +19,7 @@ export class ApprovalsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dealHealthService: DealHealthService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private transformApprovalRequest(ar: any) {
@@ -216,6 +219,21 @@ export class ApprovalsService {
 
     this.logger.log(`[AUDIT] Approval request ${id} APPROVED by ${currentUser.name}`);
 
+    // Notify Sales Rep of Approval
+    if (ar.quotation?.salesRepId) {
+      this.notificationsService.createNotification({
+        userId: ar.quotation.salesRepId,
+        type: NotificationType.APPROVAL_APPROVED,
+        title: `Quotation ${ar.quotation.quoteNumber || 'Quote'} Approved`,
+        message: `Your discount approval request for quotation ${ar.quotation.quoteNumber || ''} was approved by ${currentUser.name}.`,
+        entityType: 'QUOTATION',
+        entityId: ar.quotationId,
+        priority: NotificationPriority.HIGH,
+        deduplicationKey: `APPROVAL_APPROVED_${id}`,
+        metadata: { url: `/sales/quotations` },
+      }).catch((e) => this.logger.error('Failed to dispatch approval notification', e));
+    }
+
     // Fire-and-forget deal health recalculation
     this.dealHealthService
       .recalculateQuotationHealth(ar.quotationId)
@@ -278,6 +296,21 @@ export class ApprovalsService {
     });
 
     this.logger.log(`[AUDIT] Approval request ${id} REJECTED by ${currentUser.name}`);
+
+    // Notify Sales Rep of Rejection
+    if (ar.quotation?.salesRepId) {
+      this.notificationsService.createNotification({
+        userId: ar.quotation.salesRepId,
+        type: NotificationType.APPROVAL_REJECTED,
+        title: `Quotation ${ar.quotation.quoteNumber || 'Quote'} Rejected`,
+        message: `Your discount approval request for quotation ${ar.quotation.quoteNumber || ''} was rejected by ${currentUser.name}: ${comments || 'No reason provided'}`,
+        entityType: 'QUOTATION',
+        entityId: ar.quotationId,
+        priority: NotificationPriority.HIGH,
+        deduplicationKey: `APPROVAL_REJECTED_${id}`,
+        metadata: { url: `/sales/quotations` },
+      }).catch((e) => this.logger.error('Failed to dispatch rejection notification', e));
+    }
 
     // Fire-and-forget deal health recalculation
     this.dealHealthService

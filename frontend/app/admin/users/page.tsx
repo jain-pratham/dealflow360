@@ -51,7 +51,6 @@ const ROLES_LIST: UserRole[] = [
   "SALES_REP",
   "SALES_MANAGER",
   "FINANCE",
-  "CUSTOMER",
 ];
 
 export default function TeamAndRolesPage() {
@@ -77,7 +76,7 @@ export default function TeamAndRolesPage() {
     setLoading(true);
     const res = await apiClient.get<TeamUser[]>("/users");
     if (res.data) {
-      setUsers(res.data);
+      setUsers(res.data.filter((u) => u.role !== "CUSTOMER"));
     } else {
       showToast("error", res.error || "Failed to load team members.");
     }

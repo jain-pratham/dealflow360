@@ -20,6 +20,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DealHealthModule } from './deal-health/deal-health.module';
 import { ReportsModule } from './reports/reports.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { ReportsModule } from './reports/reports.module';
     PaymentsModule,
     DealHealthModule,
     ReportsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

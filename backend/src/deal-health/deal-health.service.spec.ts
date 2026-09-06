@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DiscountRulesService } from '../discount-rules/discount-rules.service';
 import { DealHealthGateway } from './deal-health.gateway';
 import { QuotationStatus, ApprovalStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('DealHealthService', () => {
   let service: DealHealthService;
@@ -37,6 +38,11 @@ describe('DealHealthService', () => {
     emitHealthUpdate: jest.fn(),
   };
 
+  const mockNotificationsService = {
+    createNotification: jest.fn().mockResolvedValue({}),
+    notifyRoles: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -44,6 +50,7 @@ describe('DealHealthService', () => {
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: DiscountRulesService, useValue: mockDiscountRulesService },
         { provide: DealHealthGateway, useValue: mockGateway },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 

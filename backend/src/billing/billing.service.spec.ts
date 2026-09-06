@@ -6,6 +6,8 @@ import { BillingService } from './billing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DealHealthService } from '../deal-health/deal-health.service';
 
+import { NotificationsService } from '../notifications/notifications.service';
+
 describe('BillingService', () => {
   let service: BillingService;
   let prisma: PrismaService;
@@ -35,6 +37,9 @@ describe('BillingService', () => {
     payment: {
       create: jest.fn(),
     },
+    user: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'cust-user-1' }),
+    },
     quotationAuditLog: {
       create: jest.fn(),
     },
@@ -45,12 +50,18 @@ describe('BillingService', () => {
     recalculateQuotationHealth: jest.fn().mockResolvedValue({}),
   };
 
+  const mockNotificationsService = {
+    createNotification: jest.fn().mockResolvedValue({}),
+    notifyRoles: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BillingService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: DealHealthService, useValue: mockDealHealthService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 

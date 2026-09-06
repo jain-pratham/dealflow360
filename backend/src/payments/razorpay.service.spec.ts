@@ -8,6 +8,8 @@ import { RazorpayService } from './razorpay.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingService } from '../billing/billing.service';
 
+import { NotificationsService } from '../notifications/notifications.service';
+
 describe('RazorpayService', () => {
   let service: RazorpayService;
   let prisma: PrismaService;
@@ -39,6 +41,11 @@ describe('RazorpayService', () => {
     }),
   };
 
+  const mockNotificationsService = {
+    createNotification: jest.fn().mockResolvedValue({}),
+    notifyRoles: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -46,6 +53,7 @@ describe('RazorpayService', () => {
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: BillingService, useValue: mockBillingService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 

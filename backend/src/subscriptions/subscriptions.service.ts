@@ -12,13 +12,18 @@ import {
   UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType, NotificationPriority } from '@prisma/client';
 import { QuerySubscriptionsDto } from './dto/query-subscriptions.dto';
 
 @Injectable()
 export class SubscriptionsService {
   private readonly logger = new Logger(SubscriptionsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private transformSubscription(s: any) {
     return {
@@ -280,6 +285,30 @@ export class SubscriptionsService {
     });
 
     this.logger.log(`[SUBSCRIPTION] Subscription '${id}' CANCELLED`);
+
+    // Side Effect Notification
+    if (updated.quotation?.customerId) {
+      this.prisma.user
+        .findFirst({ where: { customerId: updated.quotation.customerId, role: UserRole.CUSTOMER } })
+        .then((custUser) => {
+          if (custUser) {
+            this.notificationsService
+              .createNotification({
+                userId: custUser.id,
+                type: NotificationType.SUBSCRIPTION_CANCELLED,
+                title: 'Subscription Cancelled',
+                message: `Your subscription for ${updated.product?.name || 'Product'} has been cancelled.`,
+                priority: NotificationPriority.NORMAL,
+                entityType: 'subscription',
+                entityId: updated.id,
+                deduplicationKey: `SUBSCRIPTION_CANCELLED_${updated.id}`,
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+
     return this.transformSubscription(updated);
   }
 
@@ -400,6 +429,40 @@ export class SubscriptionsService {
 
       generatedInvoices.push(invoice);
       this.logger.log(`[RECURRING BILLING] Generated recurring invoice ${invoice.invoiceNumber} for Subscription ${sub.id}`);
+
+      // Side Effect Notifications
+      if (invoice.customerId) {
+        this.prisma.user
+          .findFirst({ where: { customerId: invoice.customerId, role: UserRole.CUSTOMER } })
+          .then((custUser) => {
+            if (custUser) {
+              this.notificationsService
+                .createNotification({
+                  userId: custUser.id,
+                  type: NotificationType.RECURRING_INVOICE_GENERATED,
+                  title: 'Recurring Invoice Generated',
+                  message: `Your recurring invoice ${invoice.invoiceNumber} for amount ${invoice.currency} ${invoice.amount} is ready.`,
+                  priority: NotificationPriority.NORMAL,
+                  entityType: 'invoice',
+                  entityId: invoice.id,
+                  deduplicationKey: `RECURRING_INVOICE_GENERATED_${invoice.id}`,
+                })
+                .catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
+      this.notificationsService
+        .notifyRoles([UserRole.FINANCE], {
+          type: NotificationType.RECURRING_INVOICE_GENERATED,
+          title: 'Recurring Invoice Generated',
+          message: `Recurring invoice ${invoice.invoiceNumber} generated for customer.`,
+          priority: NotificationPriority.NORMAL,
+          entityType: 'invoice',
+          entityId: invoice.id,
+          deduplicationKey: `RECURRING_INVOICE_GENERATED_FIN_${invoice.id}`,
+        })
+        .catch(() => {});
     }
 
     return {
