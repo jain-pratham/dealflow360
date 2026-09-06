@@ -73,6 +73,22 @@ interface QuotationDetail {
   };
   lines: LineItem[];
   comments: QuotationCommentItem[];
+  fulfillmentProgress?: {
+    totalAllocations: number;
+    status: string;
+  };
+  invoices?: Array<{
+    id: string;
+    invoiceNumber: string;
+    invoiceType: string;
+    amount: number;
+    paidAmount: number;
+    remainingBalance: number;
+    currency: string;
+    status: string;
+    issueDate: string;
+    dueDate: string;
+  }>;
 }
 
 export default function CustomerQuotationDetailPage({
@@ -361,6 +377,14 @@ export default function CustomerQuotationDetailPage({
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-3">
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Summary Totals</h3>
             <div className="space-y-2 text-xs">
+              <div className="flex justify-between text-blue-600 dark:text-blue-400 font-semibold">
+                <span>One-Time Charges</span>
+                <span>{formatCurrency(quotation.lines.filter(l => l.lineType !== "RECURRING").reduce((acc, l) => acc + l.finalUnitPrice, 0))}</span>
+              </div>
+              <div className="flex justify-between text-purple-600 dark:text-purple-400 font-semibold">
+                <span>Recurring Charges</span>
+                <span>{formatCurrency(quotation.lines.filter(l => l.lineType === "RECURRING").reduce((acc, l) => acc + l.finalUnitPrice, 0))}</span>
+              </div>
               <div className="flex justify-between text-slate-500">
                 <span>Subtotal</span>
                 <span>{formatCurrency(quotation.subtotalAmount)}</span>
@@ -374,12 +398,82 @@ export default function CustomerQuotationDetailPage({
                 <span>+{formatCurrency(quotation.taxTotal)}</span>
               </div>
               <div className="border-t border-slate-200 dark:border-slate-800 pt-2 flex justify-between text-base font-extrabold text-slate-900 dark:text-white">
-                <span>Grand Total</span>
+                <span>First-Period Total</span>
                 <span className="text-blue-600 dark:text-blue-400">{formatCurrency(quotation.totalAmount)}</span>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Confirmed Order Fulfillment & Invoice Section */}
+        {quotation.status === "CONFIRMED" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Fulfillment Status Card */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-3">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <CheckCircle2 size={18} className="text-emerald-500" />
+                Fulfillment & Dispatch Status
+              </h3>
+              <div className="flex items-center justify-between text-xs p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-medium">Order Status:</span>
+                <StatusBadge
+                  type={
+                    quotation.fulfillmentProgress?.status === "FULFILLED" || quotation.fulfillmentProgress?.status === "DELIVERED"
+                      ? "success"
+                      : quotation.fulfillmentProgress?.status === "ALLOCATED"
+                      ? "info"
+                      : "warning"
+                  }
+                  label={quotation.fulfillmentProgress?.status || "PROCESSING"}
+                />
+              </div>
+              <p className="text-xs text-slate-500">
+                Your order is confirmed and currently being processed by our operations team. You will be notified as items are allocated and dispatched.
+              </p>
+            </div>
+
+            {/* Linked Invoice Card */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-3">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText size={18} className="text-blue-500" />
+                Commercial Invoice
+              </h3>
+              {quotation.invoices && quotation.invoices.length > 0 ? (
+                <div className="space-y-3">
+                  {quotation.invoices.map((inv) => (
+                    <div
+                      key={inv.id}
+                      className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-xs"
+                    >
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-white block">{inv.invoiceNumber}</span>
+                        <span className="text-slate-400 font-mono">₹{inv.amount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <StatusBadge
+                          type={inv.status === "PAID" ? "success" : "warning"}
+                          label={inv.status}
+                        />
+                        <Link
+                          href={`/portal/invoices/${inv.id}`}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            inv.remainingBalance > 0
+                              ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                          }`}
+                        >
+                          {inv.remainingBalance > 0 ? "Pay Now" : "View Invoice"}
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">Generating commercial invoice...</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Line Items Table & Negotiation Form */}
         <form onSubmit={handleSubmitNegotiation} className="space-y-6">
@@ -435,6 +529,11 @@ export default function CustomerQuotationDetailPage({
                           </span>
                         </div>
                         <div className="text-[11px] text-slate-400">SKU: {line.sku}</div>
+                        {(line as any).subscriptionPlan && (
+                          <div className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 mt-0.5">
+                            Plan: {(line as any).subscriptionPlan.name} ({(line as any).subscriptionPlan.interval})
+                          </div>
+                        )}
                       </td>
                       <td className="px-5 py-4 font-semibold text-slate-700 dark:text-slate-300">
                         {line.quantity}

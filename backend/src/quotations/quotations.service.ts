@@ -9,6 +9,8 @@ import {
 import {
   ApprovalRoleRequired,
   ApprovalStatus,
+  LineType,
+  ProductType,
   QuotationStatus,
   UserRole,
 } from '@prisma/client';
@@ -66,6 +68,8 @@ export class QuotationsService {
       id: l.id,
       quotationId: l.quotationId,
       productId: l.productId,
+      lineType: l.lineType || LineType.ONE_TIME,
+      subscriptionPlanId: l.subscriptionPlanId,
       quantity: l.quantity,
       unitPrice: Number(l.unitPrice),
       costPrice: l.costPrice ? Number(l.costPrice) : undefined,
@@ -83,6 +87,15 @@ export class QuotationsService {
             category: l.product.productType,
             basePrice: Number(l.product.basePrice),
             currency: l.product.currency,
+          }
+        : undefined,
+      subscriptionPlan: l.subscriptionPlan
+        ? {
+            id: l.subscriptionPlan.id,
+            name: l.subscriptionPlan.name,
+            interval: l.subscriptionPlan.interval,
+            prorationPolicy: l.subscriptionPlan.prorationPolicy,
+            refundPolicy: l.subscriptionPlan.refundPolicy,
           }
         : undefined,
     };
@@ -299,6 +312,30 @@ export class QuotationsService {
             );
           }
 
+          const isProductRecurring =
+            product.productType === ProductType.SUBSCRIPTION ||
+            product.productType === ProductType.SUBSCRIPTIONS;
+          const lineType =
+            lineDto.lineType || (isProductRecurring ? LineType.RECURRING : LineType.ONE_TIME);
+
+          let subscriptionPlanId: string | null = null;
+          if (lineType === LineType.RECURRING) {
+            if (!lineDto.subscriptionPlanId) {
+              throw new BadRequestException(
+                `Recurring product '${product.name}' requires a valid active subscription plan.`,
+              );
+            }
+            const plan = await tx.subscriptionPlan.findUnique({
+              where: { id: lineDto.subscriptionPlanId },
+            });
+            if (!plan || !plan.isActive) {
+              throw new BadRequestException(
+                `Selected subscription plan '${lineDto.subscriptionPlanId}' is invalid or inactive.`,
+              );
+            }
+            subscriptionPlanId = plan.id;
+          }
+
           // Resolve applicable Price List price
           const priceRes = await this.priceListsService.resolveProductPrice(
             product.id,
@@ -321,6 +358,8 @@ export class QuotationsService {
             data: {
               quotationId: quotation.id,
               productId: product.id,
+              lineType,
+              subscriptionPlanId,
               quantity: lineDto.quantity,
               unitPrice,
               costPrice: product.costPrice ? Number(product.costPrice) : null,
@@ -391,6 +430,30 @@ export class QuotationsService {
       throw new BadRequestException('Selected product is invalid or inactive');
     }
 
+    const isProductRecurring =
+      product.productType === ProductType.SUBSCRIPTION ||
+      product.productType === ProductType.SUBSCRIPTIONS;
+    const lineType =
+      dto.lineType || (isProductRecurring ? LineType.RECURRING : LineType.ONE_TIME);
+
+    let subscriptionPlanId: string | null = null;
+    if (lineType === LineType.RECURRING) {
+      if (!dto.subscriptionPlanId) {
+        throw new BadRequestException(
+          `Recurring product '${product.name}' requires a valid active subscription plan.`,
+        );
+      }
+      const plan = await this.prisma.subscriptionPlan.findUnique({
+        where: { id: dto.subscriptionPlanId },
+      });
+      if (!plan || !plan.isActive) {
+        throw new BadRequestException(
+          `Selected subscription plan '${dto.subscriptionPlanId}' is invalid or inactive.`,
+        );
+      }
+      subscriptionPlanId = plan.id;
+    }
+
     const priceRes = await this.priceListsService.resolveProductPrice(
       product.id,
       quotation.customer.tier,
@@ -413,6 +476,8 @@ export class QuotationsService {
         data: {
           quotationId,
           productId: product.id,
+          lineType,
+          subscriptionPlanId,
           quantity: dto.quantity,
           unitPrice,
           costPrice: product.costPrice ? Number(product.costPrice) : null,

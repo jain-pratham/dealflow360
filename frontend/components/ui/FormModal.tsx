@@ -60,9 +60,12 @@ export function FormModal({
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
+            const formEl = e.currentTarget;
             onSubmit?.(e);
             setTimeout(() => {
-              const errEl = e.currentTarget.querySelector(".border-red-500, .text-red-500");
+              const errEl = formEl
+                ? formEl.querySelector(".border-red-500, .text-red-500")
+                : document.querySelector(".border-red-500, .text-red-500");
               if (errEl) {
                 errEl.scrollIntoView({ behavior: "smooth", block: "center" });
                 errEl.classList.add("animate-error-glow");

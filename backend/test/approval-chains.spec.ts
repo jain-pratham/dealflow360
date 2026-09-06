@@ -3,10 +3,12 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { AuthService } from '../src/auth/auth.service';
 
 describe('Approval Chains & Dynamic Engine Integration (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let authService: AuthService;
 
   let adminAccessToken: string;
   let salesRepAccessToken: string;
@@ -34,28 +36,40 @@ describe('Approval Chains & Dynamic Engine Integration (e2e)', () => {
     await app.init();
 
     prisma = app.get<PrismaService>(PrismaService);
+    authService = app.get<AuthService>(AuthService);
 
-    // Get Admin credentials from DB or .env
-    const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-    const adminEmail = adminUser ? adminUser.email : 'admin@dealflow360.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'ChangeThisStrongPassword123!';
+    // Create fixture Admin
+    const adminUser = await prisma.user.upsert({
+      where: { email: 'admin-chain-test@dealflow360.com' },
+      update: { role: 'ADMIN', isActive: true },
+      create: {
+        email: 'admin-chain-test@dealflow360.com',
+        name: 'Admin Chain User',
+        passwordHash: 'hashed',
+        role: 'ADMIN',
+        isActive: true,
+      },
+    });
 
-    // Admin Login
-    const adminLoginRes = await request(app.getHttpServer())
-      .post('/api/auth/login')
-      .send({ email: adminEmail, password: adminPassword });
+    const adminTokens = await authService.generateTokens(adminUser.id, adminUser.email, adminUser.role);
+    adminAccessToken = adminTokens.accessToken;
 
-    adminAccessToken = adminLoginRes.body.accessToken;
+    // Create fixture Sales Rep
+    const repUser = await prisma.user.upsert({
+      where: { email: 'rep-chain-test@dealflow360.com' },
+      update: { role: 'SALES_REP', isActive: true },
+      create: {
+        email: 'rep-chain-test@dealflow360.com',
+        name: 'Chain Sales Rep',
+        passwordHash: 'hashed',
+        role: 'SALES_REP',
+        isActive: true,
+      },
+    });
 
-    // Register & Login Sales Rep
-    const repEmail = `chain_rep_${Date.now()}@example.com`;
-    const repRegisterRes = await request(app.getHttpServer())
-      .post('/api/auth/register')
-      .send({ name: 'Chain Sales Rep', email: repEmail, password: 'Password123!' })
-      .expect(201);
-
-    salesRepAccessToken = repRegisterRes.body.accessToken;
-    salesRepId = repRegisterRes.body.user.id;
+    const repTokens = await authService.generateTokens(repUser.id, repUser.email, repUser.role);
+    salesRepAccessToken = repTokens.accessToken;
+    salesRepId = repUser.id;
 
     // Clean up test approval chains, requests and test data
     await prisma.approvalRequest.deleteMany();

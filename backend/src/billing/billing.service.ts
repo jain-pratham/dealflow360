@@ -263,25 +263,40 @@ export class BillingService {
 
         if (!existingSchedule) {
           // Resolve Plan or fallback
-          let planId = line.subscriptionPlanId;
-          if (!planId) {
-            let defaultPlan = await tx.subscriptionPlan.findFirst({
-              where: { interval: SubscriptionInterval.MONTHLY },
+          let plan = line.subscriptionPlan;
+          if (!plan && line.subscriptionPlanId) {
+            plan = await tx.subscriptionPlan.findUnique({
+              where: { id: line.subscriptionPlanId },
             });
-            if (!defaultPlan) {
-              defaultPlan = await tx.subscriptionPlan.create({
+          }
+          if (!plan) {
+            plan = await tx.subscriptionPlan.findFirst({
+              where: { interval: SubscriptionInterval.MONTHLY, isActive: true },
+            });
+            if (!plan) {
+              plan = await tx.subscriptionPlan.create({
                 data: {
                   name: 'Standard Monthly Subscription',
                   interval: SubscriptionInterval.MONTHLY,
+                  prorationPolicy: 'EXACT_DAY_PRO_RATA',
+                  refundPolicy: 'PARTIAL_CREDIT_NOTE',
+                  isActive: true,
                 },
               });
             }
-            planId = defaultPlan.id;
           }
 
+          const billingInterval = plan?.interval || SubscriptionInterval.MONTHLY;
           const startDate = new Date();
           const nextBillingDate = new Date(startDate);
-          nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+
+          if (billingInterval === SubscriptionInterval.YEARLY) {
+            nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+          } else if (billingInterval === SubscriptionInterval.QUARTERLY) {
+            nextBillingDate.setMonth(nextBillingDate.getMonth() + 3);
+          } else {
+            nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+          }
 
           const schedule = await tx.subscriptionSchedule.create({
             data: {
@@ -289,8 +304,8 @@ export class BillingService {
               quotationLineId: line.id,
               customerId: quotation.customerId,
               productId: line.productId,
-              planId,
-              billingCycle: SubscriptionInterval.MONTHLY,
+              planId: plan.id,
+              billingCycle: billingInterval,
               startDate,
               nextBillingDate,
               billingPeriodStart: startDate,
@@ -312,7 +327,7 @@ export class BillingService {
             data: {
               quotationId,
               action: 'SUBSCRIPTION_CREATED',
-              reason: `Subscription schedule created for '${line.product?.name}' (${schedule.currency} ${schedule.unitPrice}/month)`,
+              reason: `Subscription schedule created for '${line.product?.name || 'Product'}' (${schedule.currency} ${schedule.unitPrice}/${schedule.billingCycle?.toLowerCase() || 'monthly'})`,
             },
           });
 

@@ -117,7 +117,7 @@ export class ApprovalsService {
   async approve(id: string, comments: string | undefined, currentUser: any) {
     const ar = await this.prisma.approvalRequest.findUnique({
       where: { id },
-      include: { quotation: true },
+      include: { quotation: true, approvalChain: true },
     });
 
     if (!ar) {
@@ -157,19 +157,59 @@ export class ApprovalsService {
         },
       });
 
-      await tx.quotation.update({
-        where: { id: ar.quotationId },
-        data: { status: QuotationStatus.APPROVED },
+      const currentSeq = ar.approvalChain?.sequence || 0;
+
+      // Find next active approval chain with sequence greater than current
+      const nextChain = await tx.approvalChain.findFirst({
+        where: {
+          isActive: true,
+          sequence: { gt: currentSeq },
+        },
+        orderBy: { sequence: 'asc' },
       });
 
-      await tx.quotationAuditLog.create({
-        data: {
-          quotationId: ar.quotationId,
-          userId: currentUser.id,
-          action: ar.requiredRole === ApprovalRoleRequired.FINANCE ? 'FINANCE_APPROVED' : 'MANAGER_APPROVED',
-          reason: comments?.trim() || `Approved by ${currentUser.name}`,
-        },
-      });
+      if (nextChain) {
+        // Escalate to next sequence level
+        await tx.approvalRequest.create({
+          data: {
+            quotationId: ar.quotationId,
+            approvalChainId: nextChain.id,
+            requiredRole: nextChain.requiredRole,
+            requestedDiscount: ar.requestedDiscount,
+            status: ApprovalStatus.PENDING,
+          },
+        });
+
+        await tx.quotationAuditLog.create({
+          data: {
+            quotationId: ar.quotationId,
+            userId: currentUser.id,
+            action: 'ESCALATED_TO_NEXT_APPROVAL',
+            reason: `Approved by ${ar.requiredRole}. Escalated to sequence ${nextChain.sequence} (${nextChain.requiredRole})`,
+          },
+        });
+
+        this.logger.log(
+          `[AUDIT] Approval request ${id} APPROVED by ${currentUser.name}. Escalated to sequence ${nextChain.sequence} (${nextChain.requiredRole})`,
+        );
+      } else {
+        // Final approval step reached
+        await tx.quotation.update({
+          where: { id: ar.quotationId },
+          data: { status: QuotationStatus.APPROVED },
+        });
+
+        await tx.quotationAuditLog.create({
+          data: {
+            quotationId: ar.quotationId,
+            userId: currentUser.id,
+            action: ar.requiredRole === ApprovalRoleRequired.FINANCE ? 'FINANCE_APPROVED' : 'MANAGER_APPROVED',
+            reason: comments?.trim() || `Approved by ${currentUser.name}`,
+          },
+        });
+
+        this.logger.log(`[AUDIT] Approval request ${id} FINAL APPROVED by ${currentUser.name}`);
+      }
 
       return updatedAr;
     });

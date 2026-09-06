@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -9,6 +10,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { LineType } from '@prisma/client';
 
 export class CreateQuotationLineDto {
   @IsNotEmpty({ message: 'Product ID is required' })
@@ -27,6 +29,14 @@ export class CreateQuotationLineDto {
   @Min(0, { message: 'Discount cannot be negative' })
   @Max(100, { message: 'Discount cannot exceed 100%' })
   discountPercent?: number = 0;
+
+  @IsOptional()
+  @IsEnum(LineType)
+  lineType?: LineType;
+
+  @IsOptional()
+  @IsString()
+  subscriptionPlanId?: string;
 }
 
 export class CreateQuotationDto {

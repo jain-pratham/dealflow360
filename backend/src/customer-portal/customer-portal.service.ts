@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { ApprovalRoleRequired, ApprovalStatus, QuotationStatus, UserRole } from '@prisma/client';
+import { ApprovalRoleRequired, ApprovalStatus, FulfillmentStatus, QuotationStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DiscountRulesService } from '../discount-rules/discount-rules.service';
 import { BillingService } from '../billing/billing.service';
@@ -56,6 +56,99 @@ export class CustomerPortalService {
     }
   }
 
+  async getDashboardData(currentUser: any) {
+    const customerId = await this.getResolvedCustomerId(currentUser);
+
+    const allQuotations = await this.prisma.quotation.findMany({
+      where: {
+        customerId,
+        status: {
+          in: [
+            QuotationStatus.SENT,
+            QuotationStatus.UNDER_NEGOTIATION,
+            QuotationStatus.CONFIRMED,
+            QuotationStatus.PENDING_APPROVAL,
+          ],
+        },
+      },
+      include: {
+        lines: true,
+        invoices: {
+          select: { id: true, invoiceNumber: true, status: true, amount: true, remainingBalance: true, dueDate: true },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const totalQuotations = allQuotations.length;
+    const actionRequiredCount = allQuotations.filter((q) => q.status === QuotationStatus.SENT).length;
+    const underNegotiationCount = allQuotations.filter(
+      (q) => q.status === QuotationStatus.UNDER_NEGOTIATION || q.status === QuotationStatus.PENDING_APPROVAL,
+    ).length;
+    const confirmedCount = allQuotations.filter((q) => q.status === QuotationStatus.CONFIRMED).length;
+
+    const invoices = await this.prisma.invoice.findMany({
+      where: { customerId },
+      select: { amount: true, remainingBalance: true, status: true },
+    });
+
+    const outstandingInvoiceAmount = invoices.reduce(
+      (acc, inv) => (inv.status !== 'PAID' && inv.status !== 'CANCELLED' ? acc + Number(inv.remainingBalance ?? inv.amount) : acc),
+      0,
+    );
+
+    const recentLogs = await this.prisma.quotationAuditLog.findMany({
+      where: {
+        quotation: { customerId },
+      },
+      take: 8,
+      orderBy: { timestamp: 'desc' },
+      include: {
+        quotation: {
+          select: { quoteNumber: true },
+        },
+      },
+    });
+
+    const recentActivity = recentLogs.map((log) => ({
+      id: log.id,
+      quoteNumber: log.quotation.quoteNumber,
+      action: log.action,
+      reason: log.reason,
+      timestamp: log.timestamp,
+    }));
+
+    const recentQuotations = allQuotations.slice(0, 5).map((q) => ({
+      id: q.id,
+      quoteNumber: q.quoteNumber,
+      status: q.status,
+      statusLabel: this.mapStatusLabel(q.status),
+      totalAmount: Number(q.totalAmount),
+      currency: q.currency,
+      itemCount: q.lines.length,
+      createdAt: q.createdAt,
+      updatedAt: q.updatedAt,
+      invoice: q.invoices[0]
+        ? {
+            id: q.invoices[0].id,
+            invoiceNumber: q.invoices[0].invoiceNumber,
+            status: q.invoices[0].status,
+            remainingBalance: Number(q.invoices[0].remainingBalance),
+          }
+        : null,
+    }));
+
+    return {
+      totalQuotations,
+      actionRequiredCount,
+      underNegotiationCount,
+      confirmedCount,
+      outstandingInvoiceAmount,
+      recentActivity,
+      recentQuotations,
+    };
+  }
+
   async getQuotations(currentUser: any, search?: string, status?: string) {
     const customerId = await this.getResolvedCustomerId(currentUser);
 
@@ -86,6 +179,12 @@ export class CustomerPortalService {
         lines: {
           include: { product: true },
         },
+        invoices: {
+          select: { id: true, invoiceNumber: true, status: true, remainingBalance: true },
+        },
+        fulfillmentAllocations: {
+          select: { id: true, status: true },
+        },
       },
       orderBy: { updatedAt: 'desc' },
     });
@@ -103,6 +202,23 @@ export class CustomerPortalService {
       itemCount: q.lines.length,
       createdAt: q.createdAt,
       updatedAt: q.updatedAt,
+      invoice: q.invoices[0]
+        ? {
+            id: q.invoices[0].id,
+            invoiceNumber: q.invoices[0].invoiceNumber,
+            status: q.invoices[0].status,
+            remainingBalance: Number(q.invoices[0].remainingBalance),
+          }
+        : null,
+      fulfillmentStatus: q.status === QuotationStatus.CONFIRMED
+        ? (q.fulfillmentAllocations.every(a => a.status === FulfillmentStatus.FULFILLED) && q.fulfillmentAllocations.length > 0)
+          ? 'FULFILLED'
+          : (q.fulfillmentAllocations.some(a => a.status === FulfillmentStatus.PARTIALLY_FULFILLED))
+          ? 'PARTIALLY_FULFILLED'
+          : (q.fulfillmentAllocations.length > 0)
+          ? 'ALLOCATED'
+          : 'PROCESSING'
+        : 'N/A',
     }));
   }
 
@@ -114,12 +230,19 @@ export class CustomerPortalService {
       include: {
         customer: true,
         lines: {
-          include: { product: true },
+          include: { product: true, subscriptionPlan: true },
         },
         comments: {
           orderBy: { timestamp: 'asc' },
         },
         approvalRequests: {
+          orderBy: { createdAt: 'desc' },
+        },
+        subscriptionSchedules: {
+          include: { plan: true },
+        },
+        fulfillmentAllocations: true,
+        invoices: {
           orderBy: { createdAt: 'desc' },
         },
       },
@@ -163,6 +286,15 @@ export class CustomerPortalService {
         productName: line.product.name,
         sku: line.product.sku,
         description: line.product.description,
+        lineType: line.lineType,
+        subscriptionPlanId: line.subscriptionPlanId,
+        subscriptionPlan: line.subscriptionPlan
+          ? {
+              id: line.subscriptionPlan.id,
+              name: line.subscriptionPlan.name,
+              interval: line.subscriptionPlan.interval,
+            }
+          : undefined,
         quantity: line.quantity,
         unitPrice: Number(line.unitPrice),
         discountPercent: Number(line.discountPercent),
@@ -172,6 +304,13 @@ export class CustomerPortalService {
         subtotal: Number(line.subtotal),
         finalUnitPrice: Number(line.finalUnitPrice),
       })),
+      subscriptionSchedules: quotation.subscriptionSchedules.map((s) => ({
+        id: s.id,
+        planName: s.plan?.name,
+        billingCycle: s.billingCycle,
+        nextBillingDate: s.nextBillingDate,
+        status: s.status,
+      })),
       comments: quotation.comments.map((c) => ({
         id: c.id,
         authorType: c.authorType,
@@ -180,6 +319,30 @@ export class CustomerPortalService {
         isNegotiationCounter: c.isNegotiationCounter,
         proposedDiscount: c.proposedDiscount ? Number(c.proposedDiscount) : null,
         timestamp: c.timestamp,
+      })),
+      fulfillmentProgress: {
+        totalAllocations: quotation.fulfillmentAllocations.length,
+        status: quotation.status === QuotationStatus.CONFIRMED
+          ? (quotation.fulfillmentAllocations.every(a => a.status === FulfillmentStatus.FULFILLED) && quotation.fulfillmentAllocations.length > 0)
+            ? 'FULFILLED'
+            : (quotation.fulfillmentAllocations.some(a => a.status === FulfillmentStatus.PARTIALLY_FULFILLED))
+            ? 'PARTIALLY_FULFILLED'
+            : (quotation.fulfillmentAllocations.length > 0)
+            ? 'ALLOCATED'
+            : 'PROCESSING'
+          : 'N/A',
+      },
+      invoices: quotation.invoices.map((inv) => ({
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        invoiceType: inv.invoiceType,
+        amount: Number(inv.amount),
+        paidAmount: Number(inv.paidAmount),
+        remainingBalance: Number(inv.remainingBalance),
+        currency: inv.currency,
+        status: inv.status,
+        issueDate: inv.issueDate,
+        dueDate: inv.dueDate,
       })),
     };
   }

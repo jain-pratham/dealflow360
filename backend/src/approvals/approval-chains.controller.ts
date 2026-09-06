@@ -24,29 +24,31 @@ export class ApprovalChainsController {
   constructor(private readonly approvalChainsService: ApprovalChainsService) {}
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.SALES_MANAGER, UserRole.FINANCE)
   async findAll() {
     return this.approvalChainsService.findAll();
   }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.SALES_MANAGER, UserRole.FINANCE)
   async findOne(@Param('id') id: string) {
     return this.approvalChainsService.findOne(id);
   }
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SALES_MANAGER)
   async create(@Body() dto: CreateApprovalChainDto) {
     return this.approvalChainsService.create(dto);
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SALES_MANAGER)
   async update(@Param('id') id: string, @Body() dto: UpdateApprovalChainDto) {
     return this.approvalChainsService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SALES_MANAGER)
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id') id: string) {
     return this.approvalChainsService.remove(id);

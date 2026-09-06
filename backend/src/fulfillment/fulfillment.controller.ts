@@ -45,7 +45,7 @@ export class FulfillmentController {
   }
 
   @Post('fulfillment/allocation/:allocationId/ship')
-  @Roles(UserRole.ADMIN, UserRole.SALES_MANAGER, UserRole.FINANCE)
+  @Roles(UserRole.ADMIN, UserRole.FINANCE)
   @HttpCode(HttpStatus.OK)
   async processAllocationShipment(
     @Param('allocationId') allocationId: string,
@@ -93,7 +93,7 @@ export class FulfillmentController {
   }
 
   @Post('backorders/:id/fulfill')
-  @Roles(UserRole.ADMIN, UserRole.SALES_REP, UserRole.SALES_MANAGER, UserRole.FINANCE)
+  @Roles(UserRole.ADMIN, UserRole.FINANCE)
   @HttpCode(HttpStatus.OK)
   async fulfillBackorder(
     @Param('id') id: string,

@@ -46,21 +46,6 @@ export class ApprovalChainsService {
 
     const isActive = dto.isActive !== undefined ? dto.isActive : true;
 
-    if (isActive) {
-      const conflict = await this.prisma.approvalChain.findFirst({
-        where: {
-          sequence: dto.sequence,
-          isActive: true,
-        },
-      });
-
-      if (conflict) {
-        throw new ConflictException(
-          `An active approval chain with sequence '${dto.sequence}' already exists (${conflict.name})`,
-        );
-      }
-    }
-
     const created = await this.prisma.approvalChain.create({
       data: {
         name,
@@ -95,22 +80,6 @@ export class ApprovalChainsService {
     }
 
     const isActive = dto.isActive !== undefined ? dto.isActive : existing.isActive;
-
-    if (isActive && (sequence !== existing.sequence || !existing.isActive)) {
-      const conflict = await this.prisma.approvalChain.findFirst({
-        where: {
-          sequence,
-          isActive: true,
-          id: { not: id },
-        },
-      });
-
-      if (conflict) {
-        throw new ConflictException(
-          `An active approval chain with sequence '${sequence}' already exists (${conflict.name})`,
-        );
-      }
-    }
 
     const updated = await this.prisma.approvalChain.update({
       where: { id },

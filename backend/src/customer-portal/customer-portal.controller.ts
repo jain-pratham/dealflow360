@@ -24,6 +24,11 @@ import { SubmitNegotiationDto } from './dto/submit-negotiation.dto';
 export class CustomerPortalController {
   constructor(private readonly customerPortalService: CustomerPortalService) {}
 
+  @Get('dashboard')
+  async getDashboard(@GetUser() currentUser: any) {
+    return this.customerPortalService.getDashboardData(currentUser);
+  }
+
   @Get('quotations')
   async getQuotations(
     @GetUser() currentUser: any,

@@ -26,7 +26,7 @@ export class AuthService {
     private readonly mailService: MailService,
   ) {}
 
-  private async generateTokens(userId: string, email: string, role: string) {
+  async generateTokens(userId: string, email: string, role: string) {
     const accessSecret =
       this.configService.get<string>('JWT_ACCESS_SECRET') ||
       'dealflow_access_secret_key_2026';

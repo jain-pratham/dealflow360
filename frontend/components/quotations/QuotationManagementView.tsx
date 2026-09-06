@@ -115,9 +115,23 @@ export interface Product {
   isActive: boolean;
 }
 
+export interface SubPlan {
+  id: string;
+  name: string;
+  interval: "MONTHLY" | "YEARLY";
+  price: number;
+  currency: string;
+  prorationPolicy: string;
+  refundPolicy: string;
+  isActive: boolean;
+}
+
 export interface QuotationLine {
   id?: string;
   productId: string;
+  lineType?: "ONE_TIME" | "RECURRING";
+  subscriptionPlanId?: string;
+  subscriptionPlan?: { id: string; name: string; interval: string };
   quantity: number;
   unitPrice: number;
   discountPercent: number;
@@ -190,8 +204,11 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
   const [lines, setLines] = useState<QuotationLine[]>([]);
 
   // Add Line State
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubPlan[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [lineType, setLineType] = useState<"ONE_TIME" | "RECURRING">("ONE_TIME");
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [resolvedUnitPrice, setResolvedUnitPrice] = useState<number>(0);
   const [quantity, setQuantity] = useState<number>(1);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
@@ -232,9 +249,10 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
   };
 
   const fetchCustomersAndProducts = async () => {
-    const [cRes, pRes] = await Promise.all([
+    const [cRes, pRes, plansRes] = await Promise.all([
       apiClient.get<Customer[]>("/customers"),
       apiClient.get<{ data: Product[] }>("/products", { isActive: true, limit: 100 }),
+      apiClient.get<{ data: SubPlan[] }>("/subscription-plans", { isActive: true }),
     ]);
 
     if (cRes.data && Array.isArray(cRes.data)) {
@@ -244,6 +262,11 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
       setProducts((pRes.data as any).data);
     } else if (Array.isArray(pRes.data)) {
       setProducts(pRes.data as any);
+    }
+    if (plansRes.data && Array.isArray((plansRes.data as any).data)) {
+      setSubscriptionPlans((plansRes.data as any).data);
+    } else if (Array.isArray(plansRes.data)) {
+      setSubscriptionPlans(plansRes.data as any);
     }
   };
 
@@ -272,6 +295,8 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
         const prod = products.find((p) => p.id === selectedProductId);
         if (prod) {
           setSelectedProduct(prod);
+          const isRecurringProd = prod.category === "SUBSCRIPTIONS" || (prod as any).productType === "SUBSCRIPTION";
+          setLineType(isRecurringProd ? "RECURRING" : "ONE_TIME");
           const tier = getCustomerTierLabel(selectedCustomer);
           const res = await apiClient.get<{ price: number }>(
             `/price-lists/resolve-price?productId=${prod.id}&customerTier=${tier}&currency=${currency}`
@@ -504,6 +529,13 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
       return;
     }
 
+    if (lineType === "RECURRING") {
+      if (!selectedPlanId) {
+        showToast("error", "An active Subscription Plan is required for recurring line items.");
+        return;
+      }
+    }
+
     if (discountFeedback && !discountFeedback.allowed) {
       showToast("error", discountFeedback.reason || "Requested discount exceeds maximum allowed limit.");
       return;
@@ -517,8 +549,13 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
     const taxAmount = (afterDiscount * taxRate) / 100;
     const finalTotal = afterDiscount + taxAmount;
 
+    const planObj = lineType === "RECURRING" ? subscriptionPlans.find((p) => p.id === selectedPlanId) : undefined;
+
     const newLine: QuotationLine = {
       productId: selectedProduct.id,
+      lineType,
+      subscriptionPlanId: lineType === "RECURRING" ? selectedPlanId : undefined,
+      subscriptionPlan: planObj ? { id: planObj.id, name: planObj.name, interval: planObj.interval } : undefined,
       quantity,
       unitPrice,
       discountPercent,
@@ -533,6 +570,8 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
     setLines([...lines, newLine]);
     setSelectedProductId("");
     setSelectedProduct(null);
+    setSelectedPlanId("");
+    setLineType("ONE_TIME");
     setQuantity(1);
     setDiscountPercent(0);
     setDiscountFeedback(null);
@@ -560,6 +599,8 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
       notes: notes.trim() || undefined,
       lines: lines.map((l) => ({
         productId: l.productId,
+        lineType: l.lineType || "ONE_TIME",
+        subscriptionPlanId: l.lineType === "RECURRING" ? l.subscriptionPlanId : undefined,
         quantity: l.quantity,
         discountPercent: l.discountPercent,
       })),
@@ -1151,15 +1192,7 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
                                 <Eye className="w-4 h-4" />
                               </button>
 
-                              <a
-                                href={`/portal?token=${q.portalToken}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                title="Open Customer Portal Link"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </a>
+
 
                               {q.status === "APPROVED" && (
                                 <button
@@ -1281,15 +1314,6 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
                                     <Send className="w-3.5 h-3.5" />
                                   </button>
                                 )}
-                                <a
-                                  href={`/portal?token=${q.portalToken}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="p-1 rounded-md text-slate-400 hover:text-slate-700 text-xs"
-                                  title="Portal Proposal"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                </a>
                               </div>
                             </div>
                           </div>
@@ -1335,15 +1359,6 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
                 {/* Drawer Action Bar */}
                 <div className="p-3 bg-slate-100/60 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 px-5">
                   <div className="flex items-center gap-2">
-                    <a
-                      href={`/portal?token=${drawerQuotation.portalToken}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center gap-1.5 shadow-xs"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-[#0D69B2]" />
-                      <span>Customer Portal Proposal</span>
-                    </a>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -1761,7 +1776,7 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
 
               <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-                  <div className="sm:col-span-5">
+                  <div className="sm:col-span-4">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Product SKU <span className="text-rose-500">*</span>
                     </label>
@@ -1779,6 +1794,40 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
                       ))}
                     </select>
                   </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Billing Type
+                    </label>
+                    <select
+                      value={lineType}
+                      onChange={(e) => setLineType(e.target.value as any)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D69B2]"
+                    >
+                      <option value="ONE_TIME">ONE_TIME</option>
+                      <option value="RECURRING">RECURRING</option>
+                    </select>
+                  </div>
+
+                  {lineType === "RECURRING" && (
+                    <div className="sm:col-span-6">
+                      <label className="block text-xs font-semibold text-purple-600 dark:text-purple-400 mb-1">
+                        Subscription Plan <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={selectedPlanId}
+                        onChange={(e) => setSelectedPlanId(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-purple-300 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30 text-xs font-bold text-purple-900 dark:text-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="">-- Choose active subscription plan --</option>
+                        {subscriptionPlans.map((plan) => (
+                          <option key={plan.id} value={plan.id}>
+                            {plan.name} ({plan.interval}) — {formatPrice(plan.price, plan.currency)}/{plan.interval === "YEARLY" ? "yr" : "mo"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -1805,7 +1854,7 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
                     />
                   </div>
 
-                  <div className="sm:col-span-3">
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Discount %
                     </label>
@@ -1916,6 +1965,14 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
             {/* TOTALS & ACTIONS */}
             <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="space-y-1 text-xs font-mono w-full sm:w-auto">
+                <div className="flex justify-between sm:justify-start sm:gap-6 text-blue-600 dark:text-blue-400 font-semibold">
+                  <span>One-Time Charges:</span>
+                  <span className="font-bold">{formatPrice(lines.filter(l => l.lineType !== "RECURRING").reduce((acc, l) => acc + l.finalUnitPrice, 0), currency)}</span>
+                </div>
+                <div className="flex justify-between sm:justify-start sm:gap-6 text-purple-600 dark:text-purple-400 font-semibold">
+                  <span>Recurring Charges:</span>
+                  <span className="font-bold">{formatPrice(lines.filter(l => l.lineType === "RECURRING").reduce((acc, l) => acc + l.finalUnitPrice, 0), currency)}</span>
+                </div>
                 <div className="flex justify-between sm:justify-start sm:gap-6 text-slate-500">
                   <span>Subtotal:</span>
                   <span className="font-bold text-slate-800 dark:text-slate-200">{formatPrice(draftSubtotal, currency)}</span>
@@ -1929,7 +1986,7 @@ export default function QuotationManagementView({ initialCreateMode = false }: {
                   <span className="font-bold text-slate-800 dark:text-slate-200">+{formatPrice(draftTaxTotal, currency)}</span>
                 </div>
                 <div className="flex justify-between sm:justify-start sm:gap-6 text-sm font-bold text-slate-900 dark:text-slate-100 pt-1 border-t border-slate-200 dark:border-slate-800">
-                  <span>Grand Total:</span>
+                  <span>First-Period Total:</span>
                   <span className="text-[#0D69B2]">{formatPrice(draftGrandTotal, currency)}</span>
                 </div>
               </div>

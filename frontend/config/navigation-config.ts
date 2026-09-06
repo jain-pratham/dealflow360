@@ -13,7 +13,6 @@ import {
   FileText,
   Settings,
   FileSpreadsheet,
-  GitPullRequest,
   PlusCircle,
   CheckSquare,
   Truck,
@@ -129,11 +128,6 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           ],
         },
         {
-          title: "Pipeline",
-          href: "/sales/pipeline",
-          icon: React.createElement(GitPullRequest, { size: 18 }),
-        },
-        {
           title: "Approvals",
           href: "/sales/approvals",
           icon: React.createElement(CheckSquare, { size: 18 }),
@@ -173,17 +167,9 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           icon: React.createElement(LayoutDashboard, { size: 18 }),
         },
         {
-          title: "Customers",
-          href: "/sales/customers",
-          icon: React.createElement(Building2, { size: 18 }),
-        },
-        {
           title: "Quotations",
+          href: "/manager/quotations",
           icon: React.createElement(FileSpreadsheet, { size: 18 }),
-          children: [
-            { title: "All Quotations", href: "/manager/quotations" },
-            { title: "New Quotation", href: "/sales/quotations/new" },
-          ],
         },
         {
           title: "Approval Queue",
@@ -210,11 +196,6 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           title: "Reports",
           href: "/manager/reports",
           icon: React.createElement(FileText, { size: 18 }),
-        },
-        {
-          title: "Inventory",
-          href: "/sales/inventory",
-          icon: React.createElement(Layers, { size: 18 }),
         },
       ];
 

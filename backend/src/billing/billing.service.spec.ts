@@ -29,6 +29,7 @@ describe('BillingService', () => {
     },
     subscriptionPlan: {
       findFirst: jest.fn(),
+      findUnique: jest.fn(),
       create: jest.fn(),
     },
     payment: {
@@ -131,6 +132,7 @@ describe('BillingService', () => {
       };
 
       mockPrismaService.quotation.findUnique.mockResolvedValue(mockQuotation);
+      mockPrismaService.subscriptionPlan.findUnique.mockResolvedValue({ id: 'plan-1', interval: 'MONTHLY' });
       mockPrismaService.subscriptionSchedule.findFirst.mockResolvedValue(null);
       mockPrismaService.subscriptionSchedule.create.mockResolvedValue({
         id: 'sub-1',

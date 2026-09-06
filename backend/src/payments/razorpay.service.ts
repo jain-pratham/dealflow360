@@ -146,8 +146,7 @@ export class RazorpayService {
 
     const isValidSignature =
       generatedSignature === razorpay_signature ||
-      razorpay_signature === 'mock_valid_signature_for_testing' ||
-      this.keySecret === 'secret_test_518244e6';
+      razorpay_signature === 'mock_valid_signature_for_testing';
 
     if (!isValidSignature) {
       this.logger.error(`[RAZORPAY] Signature verification FAILED for Order '${razorpay_order_id}'`);

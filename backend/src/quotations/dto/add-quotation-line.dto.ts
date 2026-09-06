@@ -1,5 +1,6 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { LineType } from '@prisma/client';
 
 export class AddQuotationLineDto {
   @IsNotEmpty({ message: 'Product ID is required' })
@@ -18,4 +19,12 @@ export class AddQuotationLineDto {
   @Min(0, { message: 'Discount cannot be negative' })
   @Max(100, { message: 'Discount cannot exceed 100%' })
   discountPercent?: number = 0;
+
+  @IsOptional()
+  @IsEnum(LineType)
+  lineType?: LineType;
+
+  @IsOptional()
+  @IsString()
+  subscriptionPlanId?: string;
 }
