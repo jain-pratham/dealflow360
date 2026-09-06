@@ -31,7 +31,7 @@ export default function AdminWarehousesPage() {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [location, setLocation] = useState("");
-  const [shippingCostWeighting, setShippingCostWeighting] = useState<number>(1.0);
+  const [shippingCostWeighting, setShippingCostWeighting] = useState<number>(1);
   const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -69,7 +69,7 @@ export default function AdminWarehousesPage() {
       setName("");
       setCode("");
       setLocation("");
-      setShippingCostWeighting(1.0);
+      setShippingCostWeighting(1);
       setIsActive(true);
     }
     setIsModalOpen(true);
@@ -126,7 +126,7 @@ export default function AdminWarehousesPage() {
     },
     {
       header: "Priority / Weighting",
-      render: (row) => `${Number(row.shippingCostWeighting).toFixed(2)}x`,
+      render: (row) => `${Math.round(row.shippingCostWeighting)}`,
     },
     {
       header: "Stock SKUs",
@@ -242,11 +242,11 @@ export default function AdminWarehousesPage() {
                 </label>
                 <input
                   type="number"
-                  step="0.1"
-                  min="0.1"
+                  step="1"
+                  min="1"
                   required
                   value={shippingCostWeighting}
-                  onChange={(e) => setShippingCostWeighting(parseFloat(e.target.value) || 1.0)}
+                  onChange={(e) => setShippingCostWeighting(parseInt(e.target.value, 10) || 1)}
                   className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 font-bold"
                 />
               </div>

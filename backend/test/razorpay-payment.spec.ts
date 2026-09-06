@@ -158,7 +158,8 @@ describe('Razorpay Payment Integration & Customer Portal Security (E2E)', () => 
   it('TEST 22/24: Valid Razorpay signature creates Payment record & marks invoice PAID', async () => {
     const payId = `pay_rzp_${Date.now()}`;
     const orderId = `order_rzp_${Date.now()}`;
-    const validSig = crypto.createHmac('sha256', 'secret_test_518244e6').update(`${orderId}|${payId}`).digest('hex');
+    const secretKey = process.env.RAZORPAY_KEY_SECRET || 'secret_test_518244e6';
+    const validSig = crypto.createHmac('sha256', secretKey).update(`${orderId}|${payId}`).digest('hex');
 
     const res = await request(app.getHttpServer())
       .post('/api/payments/razorpay/verify')
@@ -181,7 +182,8 @@ describe('Razorpay Payment Integration & Customer Portal Security (E2E)', () => 
   it('TEST 23: Duplicate Razorpay payment callback does not create duplicate Payment', async () => {
     const payId = `pay_duplicate_test_${Date.now()}`;
     const orderId = `order_duplicate_test_${Date.now()}`;
-    const validSig = crypto.createHmac('sha256', 'secret_test_518244e6').update(`${orderId}|${payId}`).digest('hex');
+    const secretKey = process.env.RAZORPAY_KEY_SECRET || 'secret_test_518244e6';
+    const validSig = crypto.createHmac('sha256', secretKey).update(`${orderId}|${payId}`).digest('hex');
 
     // First call
     await request(app.getHttpServer())

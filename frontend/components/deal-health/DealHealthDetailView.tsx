@@ -59,6 +59,10 @@ export function DealHealthDetailView({ data, onResolve }: { data: DealHealthData
     }
   };
 
+  const score = data?.score ?? 100;
+  const status = data?.status ?? 'HEALTHY';
+  const alerts = Array.isArray(data?.alerts) ? data.alerts : [];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -66,10 +70,10 @@ export function DealHealthDetailView({ data, onResolve }: { data: DealHealthData
           <h3 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider">Health Assessment</h3>
           <p className="text-xs text-slate-500 mt-1">Real-time risk evaluation based on 7 factors.</p>
         </div>
-        <DealHealthScoreBadge score={data.score} status={data.status} size="lg" />
+        <DealHealthScoreBadge score={score} status={status} size="lg" />
       </div>
 
-      {data.alerts.length === 0 ? (
+      {alerts.length === 0 ? (
         <div className="p-8 text-center border border-dashed border-emerald-200 bg-emerald-50 rounded-xl text-emerald-700">
           <CheckCircle2 size={32} className="mx-auto mb-3 opacity-50" />
           <h4 className="font-bold">Deal is Healthy</h4>
@@ -79,7 +83,7 @@ export function DealHealthDetailView({ data, onResolve }: { data: DealHealthData
         <div className="space-y-4">
           <h4 className="font-bold text-sm text-slate-900 dark:text-white border-b pb-2">Active Alerts & Recommendations</h4>
           <div className="grid gap-3">
-            {data.alerts.map(alert => (
+            {alerts.map(alert => (
               <div key={alert.id} className="p-4 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900/50">
                 <div className="flex justify-between items-start">
                   <div className="flex gap-3">

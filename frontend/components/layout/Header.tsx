@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/context/theme-context";
 import { useAuth } from "@/context/auth-context";
+import { useNotifications } from "@/context/notification-context";
 import { getRoleDisplayName } from "@/lib/role-utils";
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 
 interface HeaderProps {
   sidebarCollapsed: boolean;
@@ -31,7 +33,9 @@ export default function Header({
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on click outside
@@ -154,14 +158,23 @@ export default function Header({
         {/* Notification Bell Circle Button */}
         <div className="relative">
           <button
-            className="w-9 h-9 rounded-full border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700/70 transition-all cursor-pointer shadow-2xs relative"
+            onClick={() => setNotifOpen((prev) => !prev)}
+            className={`w-9 h-9 rounded-full border text-slate-700 dark:text-slate-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs relative ${
+              notifOpen
+                ? "border-[#0D69B2] bg-blue-50/50 dark:bg-slate-800 text-[#0D69B2]"
+                : "border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/70"
+            }`}
             title="Notifications"
           >
             <Bell size={17} />
-            <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white font-extrabold text-[10px] min-w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-2xs">
-              57
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white font-extrabold text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-2xs">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </button>
+
+          <NotificationDropdown isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
         </div>
 
         {/* User Profile Dropdown Pill */}

@@ -25,6 +25,7 @@ import {
   FolderKanban,
   MessageSquare,
   Layers,
+  Bell,
 } from "lucide-react";
 import { UserRole } from "@/context/auth-context";
 
@@ -105,6 +106,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           href: "/admin/reports",
           icon: React.createElement(FileText, { size: 18 }),
         },
+        {
+          title: "Notifications",
+          href: "/admin/notifications",
+          icon: React.createElement(Bell, { size: 18 }),
+        },
       ];
 
     case "SALES_REP":
@@ -157,6 +163,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           href: "/sales/reports",
           icon: React.createElement(FileText, { size: 18 }),
         },
+        {
+          title: "Notifications",
+          href: "/sales/notifications",
+          icon: React.createElement(Bell, { size: 18 }),
+        },
       ];
 
     case "SALES_MANAGER":
@@ -196,6 +207,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           title: "Reports",
           href: "/manager/reports",
           icon: React.createElement(FileText, { size: 18 }),
+        },
+        {
+          title: "Notifications",
+          href: "/manager/notifications",
+          icon: React.createElement(Bell, { size: 18 }),
         },
       ];
 
@@ -252,6 +268,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           href: "/finance/reports",
           icon: React.createElement(FileText, { size: 18 }),
         },
+        {
+          title: "Notifications",
+          href: "/finance/notifications",
+          icon: React.createElement(Bell, { size: 18 }),
+        },
       ];
 
     case "CUSTOMER":
@@ -280,6 +301,11 @@ export function getMenuItemsForRole(role: UserRole | null): NavItem[] {
           title: "Profile",
           href: "/portal/profile",
           icon: React.createElement(UserCheck, { size: 18 }),
+        },
+        {
+          title: "Notifications",
+          href: "/portal/notifications",
+          icon: React.createElement(Bell, { size: 18 }),
         },
       ];
 

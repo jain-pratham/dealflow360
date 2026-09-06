@@ -270,4 +270,66 @@ export class MailService {
       return false;
     }
   }
+
+  async sendPasswordResetEmail(toEmail: string, name: string, otpCode: string): Promise<boolean> {
+    const fromAddress =
+      this.configService?.get<string>('EMAIL_FROM') || process.env.EMAIL_FROM || 'no-reply@dealflow360.com';
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Reset Your DealFlow360 Password</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+          .header { background: linear-gradient(135deg, #007FFF 0%, #0056b3 100%); padding: 30px; text-align: center; color: white; }
+          .header h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+          .content { padding: 35px 30px; }
+          .greeting { font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #1e293b; }
+          .text { font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 25px; }
+          .otp-box { background: #e0f2fe; border: 2px dashed #0284c7; padding: 18px; border-radius: 12px; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #0284c7; text-align: center; margin: 25px 0; }
+          .footer { background: #f8fafc; padding: 20px 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>DealFlow360 Security</h1>
+          </div>
+          <div class="content">
+            <div class="greeting">Hello ${name || 'User'},</div>
+            <p class="text">We received a request to reset the password for your DealFlow360 account (${toEmail}). Use the 6-digit security code below to proceed with resetting your password.</p>
+            <div class="otp-box">${otpCode}</div>
+            <p class="text">This code will expire in 15 minutes. If you did not request a password reset, please ignore this email.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} DealFlow360. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    if (!this.transporter) {
+      this.logger.warn(`Transporter not configured. Password Reset OTP for ${toEmail}: ${otpCode}`);
+      return false;
+    }
+
+    try {
+      const info = await this.transporter.sendMail({
+        from: `"DealFlow360 Security" <${fromAddress}>`,
+        to: toEmail,
+        subject: 'Reset Your DealFlow360 Password - Security Code',
+        html: htmlContent,
+      });
+
+      this.logger.log(`Password reset email sent to ${toEmail}: messageId=${info.messageId}`);
+      return true;
+    } catch (error: any) {
+      this.logger.error(`Failed to send password reset email to ${toEmail}: ${error?.message || error}`, error?.stack);
+      return false;
+    }
+  }
 }

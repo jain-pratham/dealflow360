@@ -72,6 +72,7 @@ export class RazorpayService {
     const receipt = `rcpt_${invoice.invoiceNumber.replace(/-/g, '_')}_${Date.now()}`;
 
     let razorpayOrderId: string;
+    let isLiveOrder = false;
 
     // Call Razorpay API or generate deterministic test order ID
     try {
@@ -97,18 +98,22 @@ export class RazorpayService {
       if (response.ok) {
         const data = await response.json();
         razorpayOrderId = data.id;
+        isLiveOrder = true;
       } else {
         // Fallback test mode order generation if API credentials are sandbox/test placeholders
         razorpayOrderId = `order_${crypto.randomBytes(10).toString('hex')}`;
+        isLiveOrder = false;
       }
     } catch (err) {
       razorpayOrderId = `order_${crypto.randomBytes(10).toString('hex')}`;
+      isLiveOrder = false;
     }
 
-    this.logger.log(`[RAZORPAY] Created order '${razorpayOrderId}' for Invoice '${invoice.invoiceNumber}' (₹${remainingBalance})`);
+    this.logger.log(`[RAZORPAY] Created order '${razorpayOrderId}' (isLive: ${isLiveOrder}) for Invoice '${invoice.invoiceNumber}' (₹${remainingBalance})`);
 
     return {
       orderId: razorpayOrderId,
+      isLiveOrder,
       amount: remainingBalance,
       amountInPaise,
       currency: 'INR',

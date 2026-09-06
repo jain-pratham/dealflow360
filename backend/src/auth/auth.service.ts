@@ -463,4 +463,85 @@ export class AuthService {
       refreshToken: tokens.refreshToken,
     };
   }
+
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (!user) {
+      // Return ambiguous message for security
+      return {
+        message: 'If an account with that email exists, password reset instructions have been sent.',
+        email,
+      };
+    }
+
+    // Generate 6-digit OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const tokenPayload = `RESET_${otpCode}_${Date.now()}`;
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerificationToken: tokenPayload },
+    });
+
+    await this.mailService.sendPasswordResetEmail(user.email, user.name, otpCode);
+
+    return {
+      message: 'Password reset OTP code has been sent to your email.',
+      email: user.email,
+      // Provide OTP in dev mode for easy testing
+      devOtp: process.env.NODE_ENV !== 'production' ? otpCode : undefined,
+    };
+  }
+
+  async verifyResetOtp(email: string, otp: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (!user || !user.emailVerificationToken || !user.emailVerificationToken.startsWith('RESET_')) {
+      throw new BadRequestException('Invalid or expired OTP code. Please request a new password reset.');
+    }
+
+    const tokenParts = user.emailVerificationToken.split('_');
+    const storedOtp = tokenParts[1];
+
+    if (storedOtp !== otp.trim()) {
+      throw new BadRequestException('Invalid 6-digit OTP code. Please check your email and try again.');
+    }
+
+    return {
+      valid: true,
+      message: 'OTP code verified successfully.',
+    };
+  }
+
+  async resetPassword(email: string, otp: string, newPassword: string) {
+    await this.verifyResetOtp(email, otp);
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User account not found');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        emailVerificationToken: null,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Password has been reset successfully! You can now log in with your new password.',
+    };
+  }
 }

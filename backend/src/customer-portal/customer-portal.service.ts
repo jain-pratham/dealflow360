@@ -49,6 +49,8 @@ export class CustomerPortalService {
         return 'Under Negotiation';
       case QuotationStatus.CONFIRMED:
         return 'Confirmed';
+      case QuotationStatus.FULFILLED:
+        return 'Fulfilled';
       case QuotationStatus.PENDING_APPROVAL:
         return 'Under Negotiation (Pending Approval)';
       default:
@@ -67,6 +69,7 @@ export class CustomerPortalService {
             QuotationStatus.SENT,
             QuotationStatus.UNDER_NEGOTIATION,
             QuotationStatus.CONFIRMED,
+            QuotationStatus.FULFILLED,
             QuotationStatus.PENDING_APPROVAL,
           ],
         },
@@ -85,7 +88,9 @@ export class CustomerPortalService {
     const underNegotiationCount = allQuotations.filter(
       (q) => q.status === QuotationStatus.UNDER_NEGOTIATION || q.status === QuotationStatus.PENDING_APPROVAL,
     ).length;
-    const confirmedCount = allQuotations.filter((q) => q.status === QuotationStatus.CONFIRMED).length;
+    const confirmedCount = allQuotations.filter(
+      (q) => q.status === QuotationStatus.CONFIRMED || q.status === QuotationStatus.FULFILLED,
+    ).length;
 
     const invoices = await this.prisma.invoice.findMany({
       where: { customerId },
@@ -152,20 +157,30 @@ export class CustomerPortalService {
   async getQuotations(currentUser: any, search?: string, status?: string) {
     const customerId = await this.getResolvedCustomerId(currentUser);
 
-    const where: any = {
-      customerId,
-      status: {
-        in: [
-          QuotationStatus.SENT,
-          QuotationStatus.UNDER_NEGOTIATION,
-          QuotationStatus.CONFIRMED,
-          QuotationStatus.PENDING_APPROVAL,
-        ],
-      },
-    };
+    const allowedStatuses: QuotationStatus[] = [
+      QuotationStatus.SENT,
+      QuotationStatus.UNDER_NEGOTIATION,
+      QuotationStatus.CONFIRMED,
+      QuotationStatus.FULFILLED,
+      QuotationStatus.PENDING_APPROVAL,
+    ];
+
+    const where: any = { customerId };
 
     if (status) {
-      where.status = status;
+      if (status === QuotationStatus.CONFIRMED) {
+        where.status = {
+          in: [QuotationStatus.CONFIRMED, QuotationStatus.FULFILLED],
+        };
+      } else if (allowedStatuses.includes(status as QuotationStatus)) {
+        where.status = status;
+      } else {
+        where.status = 'NON_EXISTENT_STATUS_FILTER';
+      }
+    } else {
+      where.status = {
+        in: allowedStatuses,
+      };
     }
 
     if (search && search.trim()) {
@@ -210,7 +225,7 @@ export class CustomerPortalService {
             remainingBalance: Number(q.invoices[0].remainingBalance),
           }
         : null,
-      fulfillmentStatus: q.status === QuotationStatus.CONFIRMED
+      fulfillmentStatus: (q.status === QuotationStatus.CONFIRMED || q.status === QuotationStatus.FULFILLED)
         ? (q.fulfillmentAllocations.every(a => a.status === FulfillmentStatus.FULFILLED) && q.fulfillmentAllocations.length > 0)
           ? 'FULFILLED'
           : (q.fulfillmentAllocations.some(a => a.status === FulfillmentStatus.PARTIALLY_FULFILLED))
@@ -322,7 +337,7 @@ export class CustomerPortalService {
       })),
       fulfillmentProgress: {
         totalAllocations: quotation.fulfillmentAllocations.length,
-        status: quotation.status === QuotationStatus.CONFIRMED
+        status: (quotation.status === QuotationStatus.CONFIRMED || quotation.status === QuotationStatus.FULFILLED)
           ? (quotation.fulfillmentAllocations.every(a => a.status === FulfillmentStatus.FULFILLED) && quotation.fulfillmentAllocations.length > 0)
             ? 'FULFILLED'
             : (quotation.fulfillmentAllocations.some(a => a.status === FulfillmentStatus.PARTIALLY_FULFILLED))

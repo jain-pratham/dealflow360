@@ -191,10 +191,10 @@ export default function CustomerManagementView() {
   const fetchCustomers = async () => {
     setLoading(true);
     const res = await apiClient.get<Customer[]>("/customers");
-    if (res.data) {
+    if (res.data && Array.isArray(res.data)) {
       setCustomers(res.data);
     } else {
-      setCustomers(INITIAL_CUSTOMERS);
+      setCustomers([]);
     }
     setLoading(false);
   };
@@ -353,11 +353,13 @@ export default function CustomerManagementView() {
   };
 
   // Filter Calculation
-  const filteredCustomers = customers.filter((c) => {
+  const safeCustomers = Array.isArray(customers) ? customers : [];
+
+  const filteredCustomers = safeCustomers.filter((c) => {
     const matchesSearch =
-      c.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.contactName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchQuery.toLowerCase());
+      (c.companyName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.contactName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.email || "").toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesTier = tierFilter === "ALL" || c.customerTier === tierFilter;
     const matchesStatus =
@@ -369,10 +371,10 @@ export default function CustomerManagementView() {
   });
 
   // Stat Counters
-  const totalCount = customers.length;
-  const activeCount = customers.filter((c) => c.isActive).length;
-  const inactiveCount = customers.filter((c) => !c.isActive).length;
-  const goldCount = customers.filter((c) => c.customerTier === "GOLD").length;
+  const totalCount = safeCustomers.length;
+  const activeCount = safeCustomers.filter((c) => c.isActive).length;
+  const inactiveCount = safeCustomers.filter((c) => !c.isActive).length;
+  const goldCount = safeCustomers.filter((c) => c.customerTier === "GOLD").length;
 
   const renderTierBadge = (tier: CustomerTier) => {
     const badgeStyles = {

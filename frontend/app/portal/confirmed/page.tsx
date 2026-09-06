@@ -148,7 +148,7 @@ export default function CustomerConfirmedPage() {
             <CheckCircle2 size={36} className="mx-auto text-slate-400 opacity-50" />
             <h4 className="text-base font-bold text-slate-700 dark:text-slate-300">No Confirmed Orders Yet</h4>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              You have no confirmed quotations. Review received quotations in "My Quotations" to confirm and initiate fulfillment.
+              You have no confirmed or fulfilled agreements. Review received quotations in "My Quotations" to confirm and initiate fulfillment.
             </p>
             <Link
               href="/portal/quotations"
